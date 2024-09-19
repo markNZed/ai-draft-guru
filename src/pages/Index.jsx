@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import SimpleMDE from 'react-simplemde-editor';
 import "easymde/dist/easymde.min.css";
 import { Button } from "@/components/ui/button";
@@ -42,9 +42,18 @@ const Index = () => {
   const handleCommandKeyDown = (event) => {
     if (event.key === 'Tab') {
       event.preventDefault();
-      editorRef.current?.focus();
+      editorRef.current?.simpleMde?.codemirror.focus();
     }
   };
+
+  useEffect(() => {
+    const editor = editorRef.current?.simpleMde;
+    if (editor) {
+      editor.codemirror.on('focus', () => {
+        editor.codemirror.refresh();
+      });
+    }
+  }, []);
 
   return (
     <div className="container mx-auto p-4">
