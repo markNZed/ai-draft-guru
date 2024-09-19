@@ -10,6 +10,7 @@ const Index = () => {
   const [markdownContent, setMarkdownContent] = useState('# Welcome to AI-Assisted Markdown Editor\n\nStart typing your content here...');
   const [command, setCommand] = useState('');
   const commandInputRef = useRef(null);
+  const editorRef = useRef(null);
 
   const handleEditorChange = useCallback((value) => {
     setMarkdownContent(value);
@@ -41,6 +42,7 @@ const Index = () => {
   const handleCommandKeyDown = (event) => {
     if (event.key === 'Tab') {
       event.preventDefault();
+      editorRef.current?.focus();
     }
   };
 
@@ -60,8 +62,10 @@ const Index = () => {
                 enabled: true,
                 delay: 1000,
                 uniqueId: "markdown-editor"
-              }
+              },
+              status: false,
             }}
+            ref={editorRef}
           />
         </div>
         <div className="w-full md:w-1/3">
