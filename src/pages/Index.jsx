@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import SimpleMDE from 'react-simplemde-editor';
 import "easymde/dist/easymde.min.css";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import axios from 'axios';
 const Index = () => {
   const [markdownContent, setMarkdownContent] = useState('# Welcome to AI-Assisted Markdown Editor\n\nStart typing your content here...');
   const [command, setCommand] = useState('');
+  const commandInputRef = useRef(null);
 
   const handleEditorChange = useCallback((value) => {
     setMarkdownContent(value);
@@ -37,6 +38,12 @@ const Index = () => {
     }
   };
 
+  const handleCommandKeyDown = (event) => {
+    if (event.key === 'Tab') {
+      event.preventDefault();
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
@@ -48,7 +55,7 @@ const Index = () => {
             options={{
               spellChecker: false,
               placeholder: "Type your Markdown here...",
-              autofocus: true,
+              autofocus: false,
               autosave: {
                 enabled: true,
                 delay: 1000,
@@ -62,6 +69,8 @@ const Index = () => {
             placeholder="Enter your command here..."
             value={command}
             onChange={handleCommandChange}
+            onKeyDown={handleCommandKeyDown}
+            ref={commandInputRef}
             className="mb-4"
           />
           <Button onClick={applyChanges}>Apply Changes</Button>
