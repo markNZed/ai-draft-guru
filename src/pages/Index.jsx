@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import SimpleMDE from 'react-simplemde-editor';
 import "easymde/dist/easymde.min.css";
 import { Button } from "@/components/ui/button";
@@ -10,24 +10,30 @@ const Index = () => {
   const [markdownContent, setMarkdownContent] = useState('# Welcome to AI-Assisted Markdown Editor\n\nStart typing your content here...');
   const [command, setCommand] = useState('');
 
-  const handleEditorChange = (value) => {
+  const handleEditorChange = useCallback((value) => {
     setMarkdownContent(value);
-  };
+  }, []);
 
   const handleCommandChange = (event) => {
     setCommand(event.target.value);
   };
 
   const applyChanges = async () => {
+    if (!command.trim()) {
+      toast.error('Please enter a command before applying changes.');
+      return;
+    }
+
     try {
       const response = await axios.post('/api/apply-command', {
         command,
         documentContent: markdownContent
       });
       setMarkdownContent(response.data.modifiedContent);
-      toast.success(response.data.message);
+      toast.success('Changes applied successfully!');
     } catch (error) {
-      toast.error('Error applying changes: ' + error.message);
+      console.error('Error applying changes:', error);
+      toast.error('Error applying changes: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -42,6 +48,12 @@ const Index = () => {
             options={{
               spellChecker: false,
               placeholder: "Type your Markdown here...",
+              autofocus: true,
+              autosave: {
+                enabled: true,
+                delay: 1000,
+                uniqueId: "markdown-editor"
+              }
             }}
           />
         </div>
