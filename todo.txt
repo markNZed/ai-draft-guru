@@ -1,1 +1,3 @@
 Bold is escaping
+Meta level where we have an AI that can edit the functions and prompt
+Need placeholders to know where to operate on the text e.g. line numbers that are inserted
