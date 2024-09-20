@@ -1,1 +1,1 @@
-Using OpenAI's Chat API:
+Bold is escaping
