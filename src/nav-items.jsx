@@ -1,3 +1,4 @@
+// src/nav-items.jsx
 import { HomeIcon } from "lucide-react";
 import Index from "./pages/Index.jsx";
 
