@@ -24,11 +24,15 @@ const port = process.env.PORT || 3001;
 app.use(morgan('combined'));
 
 // Enable CORS for specific origins
+/*
 app.use(cors({
   origin: 'http://localhost:8080',
   methods: ['POST'],
   allowedHeaders: ['Content-Type'],
 }));
+*/
+app.use(cors());
+
 
 // Apply rate limiting to all requests
 const limiter = rateLimit({
