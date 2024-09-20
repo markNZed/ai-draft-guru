@@ -1,70 +1,151 @@
-# Welcome to your GPT Engineer project
+Here is the updated README file aligned with the project structure and content:
 
-## Project info
+---
 
-**URL**: https://run.gptengineer.app/projects/f8912158-55fd-46fa-a5ff-93addfd5645f/improve
+# AI-Draft-Guru
 
-## How can I edit this code?
+## Project Overview
 
-There are several ways of editing your application.
+**AI-Draft-Guru** is a web application that enables users to create, edit, and manipulate Markdown documents with AI-assisted commands. This project consists of a **React-based frontend** and a **Node.js (Express) backend** that interfaces with OpenAI's GPT-4 API to process user commands.
 
-**Use GPT Engineer**
+## Project Structure
 
-Simply visit the GPT Engineer project at [GPT Engineer](https://gptengineer.app/projects/f8912158-55fd-46fa-a5ff-93addfd5645f/improve) and start prompting.
-
-Changes made via gptengineer.app will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in the GPT Engineer UI.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+ai-draft-guru/
+├── backend/
+│   ├── server.mjs
+│   ├── package.json
+│   ├── .env
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── lib/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   ├── package.json
+├── .prettierrc
+├── .eslintrc.cjs
+├── README.md
+├── package.json
+└── other config files...
 ```
 
-**Edit a file directly in GitHub**
+### Technologies Used
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **Frontend**:
+  - React (with Vite as the build tool)
+  - Tailwind CSS (for styling)
+  - EasyMDE (for Markdown editing)
+  - Axios (for API requests)
+  - React Query (for state management)
+  
+- **Backend**:
+  - Node.js
+  - Express.js
+  - OpenAI API
+  - Markdown manipulation (Unified, Remark-Parse, Remark-Stringify)
 
-**Use GitHub Codespaces**
+### Setup and Installation
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+To set up the project locally:
 
-## What technologies are used for this project?
+1. **Clone the repository**:
+    ```bash
+    git clone <YOUR_GIT_URL>
+    cd ai-draft-guru
+    ```
 
-This project is built with .
+2. **Install dependencies**:
+    ```bash
+    npm install
+    ```
 
-- Vite
-- React
-- shadcn-ui
-- Tailwind CSS
+3. **Set up environment variables**:
+   - Go to the `backend/` directory and create a `.env` file:
+     ```bash
+     cp .env.example .env
+     ```
+   - Add your OpenAI API key:
+     ```bash
+     OPENAI_API_KEY=your_openai_api_key_here
+     ```
 
-## How can I deploy this project?
+4. **Run the development servers**:
+    ```bash
+    npm run start
+    ```
+    This will run both the frontend (Vite) and backend (Node.js) servers.
 
-All GPT Engineer projects can be deployed directly via the GPT Engineer app.
+### Development Commands
 
-Simply visit your project at [GPT Engineer](https://gptengineer.app/projects/f8912158-55fd-46fa-a5ff-93addfd5645f/improve) and click on Share -> Publish.
+- **Start frontend and backend**:
+    ```bash
+    npm run start:all
+    ```
+- **Start only the backend**:
+    ```bash
+    npm run backend:dev
+    ```
+- **Start only the frontend**:
+    ```bash
+    npm run dev
+    ```
+- **Lint the project**:
+    ```bash
+    npm run lint
+    ```
 
-## I want to use a custom domain - is that possible?
+### Running in Production
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.gptengineer.app/tips-tricks/custom-domain/)
+To build and run in production:
+
+1. **Build the frontend**:
+    ```bash
+    npm run build
+    ```
+
+2. **Start the backend**:
+    ```bash
+    npm run backend:start
+    ```
+
+The frontend will be built into the `dist/` folder and served by the backend if required.
+
+### API Documentation
+
+- **POST** `/api/apply-command`
+
+  This endpoint processes user commands to modify the Markdown content using the OpenAI API.
+
+  **Request**:
+  ```json
+  {
+    "command": "string",
+    "documentContent": "string"
+  }
+  ```
+
+  **Response**:
+  ```json
+  {
+    "modifiedContent": "string"
+  }
+  ```
+
+  - If `OPENAI_API_KEY` is not set, the API will return a dummy response.
+
+### Environment Variables
+
+- **OPENAI_API_KEY**: Your OpenAI API key
+- **PORT**: Backend server port (default: 3001)
+
+### Deployment
+
+You can deploy this project via various platforms such as Netlify, Vercel, or using the GPT Engineer app.
+
+---
+
+Feel free to use this README file for your project, ensuring it accurately reflects the structure and technologies you've implemented.

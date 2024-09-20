@@ -3,7 +3,7 @@
 # ============================================================
 # Script: combine_files.sh
 # Description: Concatenates all useful project files into a single file,
-#              excluding specified directories, files, and file patterns (e.g. '*.svg').
+#              excluding specified directories, files, and file patterns (e.g., '*.svg').
 # Usage: ./combine_files.sh [output_file.txt]
 # If no output file is specified, defaults to 'combined_file.txt'.
 # ============================================================
@@ -27,25 +27,26 @@ fi
 # 2. Define Excluded Directories, Files, and Patterns
 # ---------------------------
 
-# Array of directories to exclude (relative to the script's location)
+# Array of directories to exclude
+# Include specific paths and directory names to exclude anywhere
 excluded_dirs=(
-  "./.gpt_engineer"
-  "./.git"
-  "./node_modules"
-  "./src/components/ui"
-  "./backend/node_modules"  # Add more directories to exclude as needed
+  ".gpt_engineer"                # Directory name to exclude anywhere
+  ".git"                          # Directory name to exclude anywhere
+  "node_modules"                  # Directory name to exclude anywhere
+  "frontend/src/components/ui"  # Specific directory path to exclude
 )
 
 # Array of specific files to exclude
 excluded_files=(
-  "./concat_files.sh"
-  "./bun.lockb"
-  "./package-lock.json"  # Exclude package-lock.json file
+  "./combine_files.sh"    # Updated to match the script's name
+  "bun.lockb"
+  "package-lock.json"     # Exclude package-lock.json file
   ".env"
-  "./combined_file.txt"
+  "$output_file"          # Automatically exclude the output file from concatenation
+  "concat_files.sh"
 )
 
-# Array of file patterns (using regex) to exclude, e.g., *.svg or *.png
+# Array of file patterns (using wildcards, e.g., *.svg or *.png)
 excluded_patterns=(
   "*.ico"
   "*.svg"
@@ -56,33 +57,54 @@ excluded_patterns=(
 # 3. Build the 'find' Exclusion Expression
 # -------------------------------
 
-# Initialize the find command with the current directory
+# Initialize the find command as an array
 find_command=(find .)
 
-# Loop through each excluded directory and add to the find command
+# Begin grouping excluded directories
+find_command+=("(")
+
+# Iterate over excluded_dirs to add exclusion patterns
 for dir in "${excluded_dirs[@]}"; do
-  find_command+=(-path "$dir" -prune -o)
+  if [[ "$dir" == */* ]]; then
+    # If the directory contains a slash, treat it as a specific path
+    find_command+=("-path" "./$dir" "-o")
+  else
+    # Otherwise, treat it as a directory name to exclude anywhere
+    find_command+=("-name" "$dir" "-o")
+  fi
 done
+
+# Remove the last "-o" if any directories were added
+if [ "${#excluded_dirs[@]}" -gt 0 ]; then
+  unset 'find_command[-1]'
+fi
+
+# Close the grouping and add -prune to exclude the directories
+find_command+=(")" "-prune" "-o")
+
+# Specify that we are interested in files only
+find_command+=("-type" "f")
 
 # Loop through each excluded file and add to the find command
 for file in "${excluded_files[@]}"; do
-  find_command+=(-not -name "$(basename "$file")")
+  find_command+=("-not" "-name" "$(basename "$file")")
 done
 
-# Loop through each excluded file pattern (regex) and add to the find command
+# Loop through each excluded file pattern (wildcards) and add to the find command
 for pattern in "${excluded_patterns[@]}"; do
-  find_command+=(-not -name "$pattern")
+  find_command+=("-not" "-name" "$pattern")
 done
 
-# Specify that we are interested in files only
-find_command+=(-type f -print)
+# End the find expression to print only the files we need
+find_command+=("-print")
 
 # ---------------------------
 # 4. Execute the 'find' Command and Concatenate Files
 # ---------------------------
 
 # Run the find command and process each file
-"${find_command[@]}" | while read -r file; do
+# Use "IFS=" and "read -r" to correctly handle filenames with spaces or special characters
+"${find_command[@]}" | while IFS= read -r file; do
   # Add a header with the file name
   echo "==== $file ====" >> "$output_file"
   

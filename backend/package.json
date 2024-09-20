@@ -1,0 +1,31 @@
+{
+    "name": "backend",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "nodemon server.mjs",
+        "start": "node server.mjs",
+        "test": "jest"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.0.3",
+        "express": "^4.18.2",
+        "express-async-handler": "^1.2.0",
+        "express-rate-limit": "^6.7.0",
+        "express-validator": "^6.15.0",
+        "morgan": "^1.10.0",
+        "openai": "^3.2.1",
+        "remark-parse": "^10.0.1",
+        "remark-stringify": "^10.0.1",
+        "unified": "^10.1.2",
+        "unist-util-visit": "^4.1.0",
+        "winston": "^3.14.2"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "nodemon": "^2.0.22",
+        "supertest": "^6.3.4"
+    }
+}

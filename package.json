@@ -1,56 +1,17 @@
 {
-  "name": "vite-project",
+  "name": "ai-draft-guru",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "backend:dev": "nodemon backend/server.js",
-    "backend:start": "node backend/server.js",
-    "start:all": "concurrently \"npm run dev\" \"npm run backend:dev\""
-  },
-  "dependencies": {
-    "@hookform/resolvers": "^3.6.0",
-    "@radix-ui/react-slot": "^1.1.0",
-    "@radix-ui/react-tabs": "^1.1.0",
-    "@radix-ui/react-tooltip": "^1.1.0",
-    "@tanstack/react-query": "^5.0.0",
-    "axios": "^1.7.7",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.0.3",
-    "easymde": "^2.15.0",
-    "express": "^4.18.2",
-    "express-rate-limit": "^6.7.0",
-    "express-validator": "^6.15.0",
-    "html-to-image": "^1.11.11",
-    "lucide-react": "^0.417.0",
-    "morgan": "^1.10.0",
-    "next-themes": "^0.3.0",
-    "openai": "^3.2.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.23.1",
-    "remark-parse": "^10.0.1",
-    "remark-stringify": "^10.0.1",
-    "sonner": "^1.5.0",
-    "tailwind-merge": "^2.2.1",
-    "tailwindcss-animate": "^1.0.7",
-    "unified": "^10.1.2",
-    "unist-util-visit": "^4.1.0",
-    "vite": "^5.1.4"
+    "dev": "concurrently \"npm run dev --workspace frontend\" \"npm run dev --workspace backend\"",
+    "build": "npm run build --workspace frontend && npm run build --workspace backend",
+    "start": "concurrently \"npm run start --workspace frontend\" \"npm run start --workspace backend\""
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.20",
-    "concurrently": "^7.6.0",
-    "eslint": "^8.56.0",
-    "nodemon": "^2.0.22",
-    "tailwindcss": "^3.4.4"
+    "concurrently": "^7.6.0"
   }
 }
