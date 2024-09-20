@@ -1,41 +1,69 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import EasyMDE from 'easymde';
+import React, { useState, useRef, useEffect } from 'react';
+import { initializeEasyMDE, destroyEasyMDE, getEasyMDEInstance } from './easyMDEManager'; // Adjust the path accordingly
 import 'easymde/dist/easymde.min.css';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { applyCommand } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 
 const Index = () => {
-  const [markdownContent, setMarkdownContent] = useState('# Welcome to AI-Assisted Markdown Editor\n\nStart typing your content here...');
   const [command, setCommand] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [commandHistory, setCommandHistory] = useState([]);
-  const editorRef = useRef(null);
+  const markdownContentRef = useRef(''); // To hold the current markdown content
+  const editorContainerRef = useRef(null); // Ref to the textarea container
 
+  // Function to fetch the markdown template with cache busting
+  const fetchMarkdownTemplate = async () => {
+    try {
+      const response = await fetch('/api/template', {
+        headers: {
+          'Content-Type': 'text/markdown',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const templateContent = await response.text();
+      return templateContent;
+    } catch (error) {
+      console.error('Error fetching markdown template:', error);
+      toast.error('Failed to load the markdown template.');
+      return null;
+    }
+  };
+
+  // Initialize EasyMDE on component mount
   useEffect(() => {
-    const easyMDE = new EasyMDE({
-      element: document.getElementById("markdown-editor"),
-      initialValue: markdownContent,
-      autosave: {
-        enabled: true,
-        delay: 1000,
-        uniqueId: "markdown-editor",
-      },
-      placeholder: "Type your Markdown here...",
-      spellChecker: false,
-    });
+    const initializeEditor = async () => {
+      const templateContent = await fetchMarkdownTemplate();
+      if (templateContent === null) {
+        return; // Do not initialize editor if fetching failed
+      }
 
-    editorRef.current = easyMDE;
+      markdownContentRef.current = templateContent;
 
-    easyMDE.codemirror.on('change', () => {
-      setMarkdownContent(easyMDE.value());
-    });
+      // Initialize EasyMDE or update the existing instance
+      const easyMDE = initializeEasyMDE(editorContainerRef.current, templateContent);
 
+      // Set up change handler if not already set
+      if (!easyMDE.isChangeHandlerSet) {
+        easyMDE.codemirror.on('change', () => {
+          markdownContentRef.current = easyMDE.value();
+        });
+        easyMDE.isChangeHandlerSet = true; // Custom flag to prevent multiple handlers
+      }
+    };
+
+    initializeEditor();
+
+    // Cleanup on unmount
     return () => {
-      easyMDE.toTextArea();
-      editorRef.current = null;
+      // Optional: Destroy the editor if you want it to be re-initialized on next mount
+      // destroyEasyMDE();
     };
   }, []);
 
@@ -48,10 +76,13 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const response = await applyCommand(command, markdownContent);
+      const response = await applyCommand(command, markdownContentRef.current);
       if (response && response.modifiedContent) {
-        setMarkdownContent(response.modifiedContent);
-        editorRef.current.value(response.modifiedContent);
+        markdownContentRef.current = response.modifiedContent;
+        const easyMDE = getEasyMDEInstance();
+        if (easyMDE) {
+          easyMDE.value(response.modifiedContent);
+        }
         toast.success('Changes applied successfully!');
         setCommandHistory(prevHistory => [...prevHistory, command]);
         setCommand('');
@@ -80,19 +111,37 @@ const Index = () => {
     applyChanges();
   };
 
+  // Function to clear local storage and reset the editor content
+  const clearLocalStorage = async () => {
+    try {
+      localStorage.removeItem("smde_markdown-editor"); // Clear the local storage key used by EasyMDE
+      const templateContent = await fetchMarkdownTemplate();
+      if (templateContent === null) {
+        return; // Do not proceed if fetching failed
+      }
+      markdownContentRef.current = templateContent;
+      const easyMDE = getEasyMDEInstance();
+      if (easyMDE) {
+        easyMDE.value(templateContent); // Update the editor's content
+      }
+      toast.success('Local storage cleared and editor reset to template!');
+    } catch (error) {
+      console.error('Error clearing storage and resetting editor:', error);
+      toast.error('Failed to reset the editor.');
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
       <div className="flex flex-col md:flex-row gap-4">
-        <div className="w-full md:w-2/3">
-          <textarea id="markdown-editor" />
+        {/* The @tailwindcss/typography plugin provides a prose class, which gives you pre-styled typography for headings, paragraphs, lists, blockquotes, etc. */}
+        <div className="w-full md:w-2/3 prose"> 
+          {/* Assign the ref to the textarea */}
+          <textarea ref={editorContainerRef} id="markdown-editor" />
         </div>
         <div className="w-full md:w-1/3">
           <Tabs defaultValue="command">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="command">Command</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-            </TabsList>
             <TabsContent value="command">
               <Textarea
                 placeholder="Enter your command here..."
@@ -122,9 +171,10 @@ const Index = () => {
                   </ul>
                 </div>
               )}
-            </TabsContent>
-            <TabsContent value="preview">
-              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: markdownContent }} />
+              {/* Clear Storage & Reset Editor Button */}
+              <Button onClick={clearLocalStorage} className="mt-4">
+                Clear Storage & Reset Editor
+              </Button>
             </TabsContent>
           </Tabs>
         </div>

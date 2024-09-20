@@ -6,7 +6,7 @@ Certainly! Below is an updated **Prototype Specification** for your **AI-Assiste
 
 ## **1. Project Overview**
 
-The **AI-Assisted Markdown Document Editor** is a full-stack web application designed to enable users to create, edit, and manipulate Markdown documents with the assistance of AI-powered commands. The application consists of a React-based frontend and a Node.js (Express) backend that interfaces with OpenAI's GPT-4 API to process user commands for restructuring and restyling Markdown content.
+The **AI-Assisted Markdown Document Editor** is a full-stack web application designed to enable users to create, edit, and manipulate Markdown documents with the assistance of AI-powered commands. The application consists of a React-based frontend and a Node.js (Express) backend that interfaces with OpenAI's GPT-4o API to process user commands for restructuring and restyling Markdown content.
 
 ---
 
@@ -147,7 +147,7 @@ ai-draft-guru/
 - **Key Features**:
   - **CORS Configuration**: Allows requests from `http://localhost:8080`.
   - **Rate Limiting**: Limits each IP to 60 requests per minute.
-  - **OpenAI Integration**: Communicates with OpenAI's GPT-4 API to process user commands.
+  - **OpenAI Integration**: Communicates with OpenAI's GPT-4o API to process user commands.
   - **Markdown Processing**:
     - Parses Markdown content into an AST using `unified` with `remark-parse`.
     - Applies AI-generated operations to modify the AST.
@@ -347,7 +347,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 PORT=3001
 ```
 
-- **`OPENAI_API_KEY`**: Your OpenAI API key for accessing GPT-4 services.
+- **`OPENAI_API_KEY`**: Your OpenAI API key for accessing GPT-4o services.
 - **`PORT`**: Port number on which the backend server runs (default: 3001).
 
 **Note**: Ensure that `.env` is listed in `.gitignore` to prevent sensitive information from being committed to version control.
@@ -553,7 +553,7 @@ app.post(
 ```
 
 - **Behavior**:
-  - **With `OPENAI_API_KEY`**: Processes user commands using OpenAI's GPT-4 API and returns the modified Markdown content.
+  - **With `OPENAI_API_KEY`**: Processes user commands using OpenAI's GPT-4o API and returns the modified Markdown content.
   - **Without `OPENAI_API_KEY`**: Returns a predefined dummy response by applying hardcoded operations to the Markdown content.
 
 ### **9.3. Benefits**
@@ -678,7 +678,7 @@ app.post(
    - Click "Apply Changes" to send the command to the backend.
 3. **Applying Commands**:
 
-   - **With OpenAI API Key**: The backend processes the command using OpenAI's GPT-4 API and returns the modified Markdown.
+   - **With OpenAI API Key**: The backend processes the command using OpenAI's GPT-4o API and returns the modified Markdown.
    - **Without OpenAI API Key**: The backend returns a dummy response with predefined operations.
 4. **Viewing Results**:
 
@@ -878,7 +878,7 @@ To support additional Markdown manipulation operations:
 
 ## **19. Conclusion**
 
-The **AI-Assisted Markdown Document Editor** combines a robust frontend with a powerful backend to provide an intuitive and intelligent Markdown editing experience. By leveraging modern technologies like React, Vite, Express.js, and OpenAI's GPT-4, the application offers dynamic content manipulation through user-friendly commands. The current implementation ensures flexibility, security, and scalability, laying a strong foundation for future enhancements and feature expansions.
+The **AI-Assisted Markdown Document Editor** combines a robust frontend with a powerful backend to provide an intuitive and intelligent Markdown editing experience. By leveraging modern technologies like React, Vite, Express.js, and OpenAI's GPT-4o, the application offers dynamic content manipulation through user-friendly commands. The current implementation ensures flexibility, security, and scalability, laying a strong foundation for future enhancements and feature expansions.
 
 ---
 
