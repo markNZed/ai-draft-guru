@@ -3,7 +3,7 @@
 # ============================================================
 # Script: combine_files.sh
 # Description: Concatenates all useful project files into a single file,
-#              excluding specified directories and files like 'node_modules', 'src/components/ui', 'package-lock.json'.
+#              excluding specified directories, files, and file patterns (e.g. '*.svg').
 # Usage: ./combine_files.sh [output_file.txt]
 # If no output file is specified, defaults to 'combined_file.txt'.
 # ============================================================
@@ -24,19 +24,32 @@ fi
 > "$output_file"
 
 # ---------------------------
-# 2. Define Excluded Directories and Files
+# 2. Define Excluded Directories, Files, and Patterns
 # ---------------------------
 
 # Array of directories to exclude (relative to the script's location)
 excluded_dirs=(
+  "./.gpt_engineer"
+  "./.git"
   "./node_modules"
   "./src/components/ui"
   "./backend/node_modules"  # Add more directories to exclude as needed
 )
 
-# Array of files to exclude
+# Array of specific files to exclude
 excluded_files=(
+  "./concat_files.sh"
+  "./bun.lockb"
   "./package-lock.json"  # Exclude package-lock.json file
+  ".env"
+  "./combined_file.txt"
+)
+
+# Array of file patterns (using regex) to exclude, e.g., *.svg or *.png
+excluded_patterns=(
+  "*.ico"
+  "*.svg"
+  "*.png"
 )
 
 # -------------------------------
@@ -54,6 +67,11 @@ done
 # Loop through each excluded file and add to the find command
 for file in "${excluded_files[@]}"; do
   find_command+=(-not -name "$(basename "$file")")
+done
+
+# Loop through each excluded file pattern (regex) and add to the find command
+for pattern in "${excluded_patterns[@]}"; do
+  find_command+=(-not -name "$pattern")
 done
 
 # Specify that we are interested in files only
