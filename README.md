@@ -72,31 +72,6 @@ The tool allows users to write Markdown content while utilizing AI to make struc
 
 ---
 
-## Project Structure
-
-```
-ai-draft-guru/
-├── backend/
-│   ├── server.mjs
-│   ├── package.json
-│   ├── .env
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── lib/
-│   │   ├── pages/
-│   │   ├── hooks/
-│   ├── index.html
-│   ├── vite.config.js
-│   ├── tailwind.config.js
-│   ├── package.json
-├── .prettierrc
-├── .eslintrc.cjs
-├── README.md
-├── package.json
-└── other config files...
-```
-
 ### Technologies Used
 
 - **Frontend**:
@@ -106,6 +81,7 @@ ai-draft-guru/
   - EasyMDE (for Markdown editing)
   - Axios (for API requests)
   - React Query (for state management)
+
 - **Backend**:
 
   - Node.js
@@ -150,7 +126,7 @@ To set up the project locally:
 
 - **Start frontend and backend**:
   ```bash
-  npm run start:all
+  npm run dev
   ```
 - **Start only the backend**:
   ```bash
@@ -158,54 +134,12 @@ To set up the project locally:
   ```
 - **Start only the frontend**:
   ```bash
-  npm run dev
+  npm run frontend:dev
   ```
 - **Lint the project**:
   ```bash
   npm run lint
   ```
-
-### Running in Production
-
-To build and run in production:
-
-1. **Build the frontend**:
-
-   ```bash
-   npm run build
-   ```
-2. **Start the backend**:
-
-   ```bash
-   npm run backend:start
-   ```
-
-The frontend will be built into the `dist/` folder and served by the backend if required.
-
-### API Documentation
-
-- **POST** `/api/apply-command`
-
-  This endpoint processes user commands to modify the Markdown content using the OpenAI API.
-
-  **Request**:
-
-  ```json
-  {
-    "command": "string",
-    "documentContent": "string"
-  }
-  ```
-
-  **Response**:
-
-  ```json
-  {
-    "modifiedContent": "string"
-  }
-  ```
-
-  - If `OPENAI_API_KEY` is not set, the API will return a dummy response.
 
 ### Environment Variables
 
