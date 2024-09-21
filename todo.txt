@@ -1,3 +1,15 @@
 Bold is escaping
 Meta level where we have an AI that can edit the functions and prompt
 Need placeholders to know where to operate on the text e.g. line numbers that are inserted
+Consider adding context-aware prompts that take into account the current structure and content of the document.
+Implement a diff view or highlighting system to show users exactly what the AI changed in response to their commands.
+Versioning
+
+Key Components to Implement:
+
+    Controllers: Handle HTTP requests and responses.
+    Services: Contain business logic, including AI interactions.
+    Routes: Define API endpoints.
+    Middleware: Handle tasks like logging, error handling, and request validation.
+    Utils: Utility functions and helpers.
+    Config: Configuration settings and environment variables.

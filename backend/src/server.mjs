@@ -12,7 +12,7 @@ import { requestIdMiddleware } from './middleware/requestId.mjs';
 import { loggerMiddleware } from './middleware/loggerMiddleware.mjs';
 import { corsMiddleware } from './middleware/cors.mjs';
 import { rateLimiter } from './middleware/rateLimiter.mjs';
-
+import { errorHandler } from './middleware/errorHandler.mjs';
 import applyCommandRouter from './routes/applyCommand.mjs';
 import templateRouter from './routes/template.mjs';
 
@@ -50,6 +50,9 @@ app.use(
 
 // Apply rate limiting to all requests
 app.use(rateLimiter);
+
+// Error handling middleware
+app.use(errorHandler);
 
 // Parse JSON bodies
 app.use(express.json());

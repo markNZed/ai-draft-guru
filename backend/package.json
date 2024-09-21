@@ -4,8 +4,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "nodemon server.mjs",
-        "start": "node server.mjs",
+        "dev": "nodemon src/server.mjs",
+        "start": "node src/server.mjs",
         "test": "jest"
     },
     "dependencies": {

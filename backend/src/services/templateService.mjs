@@ -16,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = resolve(__filename, '..');
 
 export const getProcessedTemplate = async (requestId) => {
-  const templatePath = path.join(__dirname, '..', 'templates', 'template.md');
+  const templatePath = path.join(__dirname, '..', '..', 'templates', 'default.md');
 
   try {
     const content = await fs.readFile(templatePath, 'utf-8');
