@@ -70,8 +70,55 @@ const Index = () => {
   const [commandHistory, setCommandHistory] = useState([]);
   const [proposedContent, setProposedContent] = useState(null); // State to track proposed changes
   const [currentContent, setCurrentContent] = useState(''); // State to track current content
+  const [versions, setVersions] = useState([]); // State to track versions
+  const [undoStack, setUndoStack] = useState([]); // State to track undo stack
   const markdownContentRef = useRef(''); 
   const editorContainerRef = useRef(null); // Ref to the textarea container
+
+  const LOCAL_STORAGE_KEY_VERSIONS = "smde_markdown_versions";
+  const LOCAL_STORAGE_KEY_UNDO = "smde_markdown_undo";
+
+  // Function to load versions from localStorage
+  const loadVersions = () => {
+    const storedVersions = localStorage.getItem(LOCAL_STORAGE_KEY_VERSIONS);
+    if (storedVersions) {
+      try {
+        const parsed = JSON.parse(storedVersions);
+        setVersions(parsed);
+      } catch (error) {
+        console.error('Error parsing versions from localStorage:', error);
+        setVersions([]);
+      }
+    } else {
+      setVersions([]);
+    }
+  };
+
+  // Function to save versions to localStorage
+  const saveVersions = (newVersions) => {
+    localStorage.setItem(LOCAL_STORAGE_KEY_VERSIONS, JSON.stringify(newVersions));
+  };
+
+  // Function to load undo stack from localStorage
+  const loadUndoStack = () => {
+    const storedUndo = localStorage.getItem(LOCAL_STORAGE_KEY_UNDO);
+    if (storedUndo) {
+      try {
+        const parsed = JSON.parse(storedUndo);
+        setUndoStack(parsed);
+      } catch (error) {
+        console.error('Error parsing undo stack from localStorage:', error);
+        setUndoStack([]);
+      }
+    } else {
+      setUndoStack([]);
+    }
+  };
+
+  // Function to save undo stack to localStorage
+  const saveUndoStack = (newUndoStack) => {
+    localStorage.setItem(LOCAL_STORAGE_KEY_UNDO, JSON.stringify(newUndoStack));
+  };
 
   // Initialize EasyMDE on component mount
   useEffect(() => {
@@ -81,17 +128,44 @@ const Index = () => {
         return; // Do not initialize editor if fetching failed
       }
 
-      markdownContentRef.current = templateContent;
-      setCurrentContent(templateContent);
+      // Load versions from localStorage
+      loadVersions();
+
+      // If no versions exist, initialize with the template content as the first version
+      if (versions.length === 0) {
+        const initialVersion = {
+          timestamp: new Date().toISOString(),
+          content: templateContent,
+        };
+        setVersions([initialVersion]);
+        saveVersions([initialVersion]);
+        markdownContentRef.current = templateContent;
+        setCurrentContent(templateContent);
+      } else {
+        // Load the latest version
+        const latestVersion = versions[versions.length - 1];
+        markdownContentRef.current = latestVersion.content;
+        setCurrentContent(latestVersion.content);
+      }
 
       // Initialize EasyMDE or update the existing instance
-      const easyMDE = initializeEasyMDE(editorContainerRef.current, templateContent);
+      const easyMDE = initializeEasyMDE(editorContainerRef.current, markdownContentRef.current);
 
       // Set up change handler if not already set
       if (!easyMDE.isChangeHandlerSet) {
         easyMDE.codemirror.on('change', () => {
-          markdownContentRef.current = easyMDE.value();
-          setCurrentContent(easyMDE.value());
+          const newValue = easyMDE.value();
+          // Push the current content to the undo stack before updating
+          setUndoStack(prevUndo => {
+            const updatedUndo = [...prevUndo, markdownContentRef.current];
+            saveUndoStack(updatedUndo);
+            return updatedUndo;
+          });
+
+          markdownContentRef.current = newValue;
+          setCurrentContent(newValue);
+          // Add a new version
+          addNewVersion(newValue);
         });
         easyMDE.isChangeHandlerSet = true; // Custom flag to prevent multiple handlers
       }
@@ -99,11 +173,26 @@ const Index = () => {
 
     initializeEditor();
 
+    // Load undo stack
+    loadUndoStack();
+
     // Cleanup on unmount
     return () => {
       destroyEasyMDE(); // Destroy the editor instance on unmount
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Function to add a new version
+  const addNewVersion = (content) => {
+    const newVersion = {
+      timestamp: new Date().toISOString(),
+      content: content,
+    };
+    const updatedVersions = [...versions, newVersion];
+    setVersions(updatedVersions);
+    saveVersions(updatedVersions);
+  };
 
   const applyChanges = async () => {
     if (!command.trim()) {
@@ -116,6 +205,13 @@ const Index = () => {
     try {
       const response = await applyCommand(command, currentContent);
       if (response && response.modifiedContent) {
+        // Push the current content to the undo stack before applying changes
+        setUndoStack(prevUndo => {
+          const updatedUndo = [...prevUndo, currentContent];
+          saveUndoStack(updatedUndo);
+          return updatedUndo;
+        });
+
         // Clear previous proposedContent before setting new one
         setProposedContent(null);
         // Small delay to ensure state is cleared
@@ -137,13 +233,23 @@ const Index = () => {
 
   const approveChanges = () => {
     if (proposedContent) {
+      // Push the current content to the undo stack before approving changes
+      setUndoStack(prevUndo => {
+        const updatedUndo = [...prevUndo, markdownContentRef.current];
+        saveUndoStack(updatedUndo);
+        return updatedUndo;
+      });
+
       // Update the current content with the proposed changes
       markdownContentRef.current = proposedContent;
       setCurrentContent(proposedContent);
-  
+
+      // Add the approved changes as a new version
+      addNewVersion(proposedContent);
+
       // First reset proposedContent to trigger the editor rendering
       setProposedContent(null);
-  
+
       toast.success('Changes approved and applied!');
     }
   };
@@ -153,15 +259,25 @@ const Index = () => {
     if (proposedContent === null && editorContainerRef.current) {
       // Destroy any existing instance of EasyMDE
       destroyEasyMDE();
-  
+
       // Initialize EasyMDE with the updated content
       const easyMDE = initializeEasyMDE(editorContainerRef.current, markdownContentRef.current); 
-  
+
       // Set up the change handler again to track changes in the editor
       if (easyMDE && !easyMDE.isChangeHandlerSet) {
         easyMDE.codemirror.on('change', () => {
-          markdownContentRef.current = easyMDE.value();
-          setCurrentContent(easyMDE.value());
+          const newValue = easyMDE.value();
+          // Push the current content to the undo stack before updating
+          setUndoStack(prevUndo => {
+            const updatedUndo = [...prevUndo, markdownContentRef.current];
+            saveUndoStack(updatedUndo);
+            return updatedUndo;
+          });
+
+          markdownContentRef.current = newValue;
+          setCurrentContent(newValue);
+          // Add a new version
+          addNewVersion(newValue);
         });
         easyMDE.isChangeHandlerSet = true;
       }
@@ -169,8 +285,8 @@ const Index = () => {
       // Ensure the editor content is updated with the approved content
       easyMDE.value(markdownContentRef.current); // Explicitly set the content in EasyMDE
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proposedContent]); // Re-run when proposedContent changes
-  
 
   const rejectChanges = () => {
     setProposedContent(null); // Reset proposedContent to return to editor view
@@ -195,6 +311,8 @@ const Index = () => {
   const clearLocalStorage = async () => {
     try {
       localStorage.removeItem("smde_markdown-editor"); // Clear the local storage key used by EasyMDE
+      localStorage.removeItem(LOCAL_STORAGE_KEY_VERSIONS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_UNDO);
       const templateContent = await fetchMarkdownTemplate();
       if (templateContent === null) {
         return; // Do not proceed if fetching failed
@@ -202,6 +320,8 @@ const Index = () => {
       markdownContentRef.current = templateContent;
       setCurrentContent(templateContent);
       setProposedContent(null);
+      setVersions([{ timestamp: new Date().toISOString(), content: templateContent }]);
+      setUndoStack([]);
       const easyMDE = getEasyMDEInstance();
       if (easyMDE) {
         easyMDE.value(templateContent); // Update the editor's content
@@ -212,11 +332,93 @@ const Index = () => {
       toast.error('Failed to reset the editor.');
     }
   };
-  
+
+  // Function to handle undo action
+  const handleUndo = () => {
+    if (undoStack.length === 0) {
+      toast.info('Nothing to undo.');
+      return;
+    }
+
+    const lastState = undoStack[undoStack.length - 1];
+    setUndoStack(prevUndo => {
+      const updatedUndo = prevUndo.slice(0, -1);
+      saveUndoStack(updatedUndo);
+      return updatedUndo;
+    });
+
+    // Update the editor with the last state
+    markdownContentRef.current = lastState;
+    setCurrentContent(lastState);
+    const easyMDE = getEasyMDEInstance();
+    if (easyMDE) {
+      easyMDE.value(lastState);
+    }
+
+    // Remove the last version as it's being undone
+    setVersions(prevVersions => {
+      const updatedVersions = prevVersions.slice(0, -1);
+      saveVersions(updatedVersions);
+      return updatedVersions;
+    });
+
+    toast.success('Undid the last change.');
+  };
+
+  // Function to handle selecting a specific version
+  const handleSelectVersion = (version) => {
+    // Push current state to undo stack
+    setUndoStack(prevUndo => {
+      const updatedUndo = [...prevUndo, markdownContentRef.current];
+      saveUndoStack(updatedUndo);
+      return updatedUndo;
+    });
+
+    // Update to the selected version
+    markdownContentRef.current = version.content;
+    setCurrentContent(version.content);
+    const easyMDE = getEasyMDEInstance();
+    if (easyMDE) {
+      easyMDE.value(version.content);
+    }
+
+    toast.success(`Reverted to version from ${new Date(version.timestamp).toLocaleString()}.`);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
       
+      {/* Undo and Version Controls */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Button onClick={handleUndo} disabled={undoStack.length === 0}>
+          Undo
+        </Button>
+        <Tabs defaultValue="versions">
+          <TabsContent value="versions">
+            <div className="mt-2">
+              <h3 className="font-semibold mb-2">Version History:</h3>
+              {versions.length === 0 ? (
+                <p>No versions available.</p>
+              ) : (
+                <ul className="list-disc pl-5 max-h-60 overflow-y-auto">
+                  {versions.map((version, index) => (
+                    <li key={index} className="mb-1">
+                      <button
+                        onClick={() => handleSelectVersion(version)}
+                        className="text-blue-500 hover:underline"
+                      >
+                        {new Date(version.timestamp).toLocaleString()}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
       {/* Conditional Rendering Based on proposedContent */}
       {!proposedContent ? (
         // Editor and Command Input Section
