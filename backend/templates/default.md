@@ -13,7 +13,6 @@ Welcome to **AI-Draft-Guru**! This tool helps you create and manipulate Markdown
 
 - AI-Assisted Editing
 - Real-time Feedback
-- Dummy Mode
 
 ### TOC
 
@@ -27,17 +26,10 @@ In the YAML header set `numbering: true` and create a `Contents` heading for num
 
 Use natural language commands to restructure your document.
 
+Current commands the AI supports:
+* change heading text
+* bold text
+
 ### Real-time Feedback
 
 See changes immediately after applying commands.
-
-## Getting Started
-
-To get started, clone the repository and install dependencies.
-
-### Clone the Repository
-
-```bash
-git clone <YOUR_GIT_URL>
-cd ai-draft-guru
-```

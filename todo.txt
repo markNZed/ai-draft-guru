@@ -1,4 +1,4 @@
-Bold is escaping
+tests need testing
 Meta level where we have an AI that can edit the functions and prompt
 Need placeholders to know where to operate on the text e.g. line numbers that are inserted
 Consider adding context-aware prompts that take into account the current structure and content of the document.
