@@ -119,7 +119,12 @@ router.post(
       }
 
       logger.info('Document successfully modified', { requestId });
-      res.json({ modifiedContent, message: 'Success' });
+      res.json({ 
+        originalContent: documentContent, 
+        modifiedContent, 
+        operationsApplied: operations.operations,
+        message: 'Success' 
+      });
     } catch (error) {
       logger.error('Error communicating with AI service', {
         requestId,

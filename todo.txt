@@ -1,12 +1,16 @@
-tests need testing
-Meta level where we have an AI that can edit the functions and prompt
-Need placeholders to know where to operate on the text e.g. line numbers that are inserted
-Consider adding context-aware prompts that take into account the current structure and content of the document.
 Implement a diff view or highlighting system to show users exactly what the AI changed in response to their commands.
+Undo
 Versioning
+Need placeholders to know where to operate on the text e.g. line numbers that are inserted
+Inline commands e.g. for podcast generation [speaker:XXX]
+  Would need to return a link - this is true for other transformations too
+    Maybe just force the browser to download
+  Syntax checking with highlighting of problems
+Consider adding context-aware prompts that take into account the current structure and content of the document.
+  Allow for iteraction over parts of the document e.g. for each section ...
+Tests need testing
 
 Key Components to Implement:
-
     Controllers: Handle HTTP requests and responses.
     Services: Contain business logic, including AI interactions.
     Routes: Define API endpoints.
