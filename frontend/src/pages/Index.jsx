@@ -136,6 +136,7 @@ const Index = () => {
         const initialVersion = {
           timestamp: new Date().toISOString(),
           content: templateContent,
+          command: 'Initial template loaded', // Default command for initial version
         };
         setVersions([initialVersion]);
         saveVersions([initialVersion]);
@@ -164,8 +165,8 @@ const Index = () => {
 
           markdownContentRef.current = newValue;
           setCurrentContent(newValue);
-          // Add a new version
-          addNewVersion(newValue);
+          // Add a new version with a default command since no specific command was provided
+          addNewVersion(newValue, 'Manual edit');
         });
         easyMDE.isChangeHandlerSet = true; // Custom flag to prevent multiple handlers
       }
@@ -183,11 +184,12 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Function to add a new version
-  const addNewVersion = (content) => {
+  // Function to add a new version with command
+  const addNewVersion = (content, command) => {
     const newVersion = {
       timestamp: new Date().toISOString(),
       content: content,
+      command: command, // Store the user-provided command
     };
     const updatedVersions = [...versions, newVersion];
     setVersions(updatedVersions);
@@ -219,6 +221,8 @@ const Index = () => {
           setProposedContent(response.modifiedContent);
         }, 0);
         setCommandHistory(prevHistory => [...prevHistory, command]);
+        // Add a new version with the associated command
+        addNewVersion(response.modifiedContent, command);
         setCommand('');
       } else {
         throw new Error('Invalid response from the server.');
@@ -244,8 +248,8 @@ const Index = () => {
       markdownContentRef.current = proposedContent;
       setCurrentContent(proposedContent);
 
-      // Add the approved changes as a new version
-      addNewVersion(proposedContent);
+      // Add the approved changes as a new version with a default command
+      addNewVersion(proposedContent, 'Approved changes');
 
       // First reset proposedContent to trigger the editor rendering
       setProposedContent(null);
@@ -276,8 +280,8 @@ const Index = () => {
 
           markdownContentRef.current = newValue;
           setCurrentContent(newValue);
-          // Add a new version
-          addNewVersion(newValue);
+          // Add a new version with a default command
+          addNewVersion(newValue, 'Manual edit');
         });
         easyMDE.isChangeHandlerSet = true;
       }
@@ -320,7 +324,7 @@ const Index = () => {
       markdownContentRef.current = templateContent;
       setCurrentContent(templateContent);
       setProposedContent(null);
-      setVersions([{ timestamp: new Date().toISOString(), content: templateContent }]);
+      setVersions([{ timestamp: new Date().toISOString(), content: templateContent, command: 'Initial template loaded' }]);
       setUndoStack([]);
       const easyMDE = getEasyMDEInstance();
       if (easyMDE) {
@@ -389,36 +393,6 @@ const Index = () => {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
       
-      {/* Undo and Version Controls */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <Button onClick={handleUndo} disabled={undoStack.length === 0}>
-          Undo
-        </Button>
-        <Tabs defaultValue="versions">
-          <TabsContent value="versions">
-            <div className="mt-2">
-              <h3 className="font-semibold mb-2">Version History:</h3>
-              {versions.length === 0 ? (
-                <p>No versions available.</p>
-              ) : (
-                <ul className="list-disc pl-5 max-h-60 overflow-y-auto">
-                  {versions.map((version, index) => (
-                    <li key={index} className="mb-1">
-                      <button
-                        onClick={() => handleSelectVersion(version)}
-                        className="text-blue-500 hover:underline"
-                      >
-                        {new Date(version.timestamp).toLocaleString()}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-
       {/* Conditional Rendering Based on proposedContent */}
       {!proposedContent ? (
         // Editor and Command Input Section
@@ -490,6 +464,46 @@ const Index = () => {
           </Button>
         </div>
       )}
+
+      {/* Undo and Version Controls moved to the bottom */}
+      <div className="flex flex-col gap-4 mt-8">
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleUndo} disabled={undoStack.length === 0}>
+            Undo
+          </Button>
+        </div>
+
+        <Tabs defaultValue="versions">
+          <TabsContent value="versions">
+            <div className="mt-2">
+              <h3 className="font-semibold mb-2">Version History:</h3>
+              {versions.length === 0 ? (
+                <p>No versions available.</p>
+              ) : (
+                <ul className="list-disc pl-5 max-h-60 overflow-y-auto">
+                  {/* Reverse the versions array to show latest first */}
+                  {[...versions].reverse().map((version, index) => (
+                    <li key={index} className="mb-2">
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => handleSelectVersion(version)}
+                          className="text-blue-500 hover:underline"
+                        >
+                          {new Date(version.timestamp).toLocaleString()}
+                        </button>
+                        {/* Display the associated command/instruction */}
+                        <span className="text-sm text-gray-600 ml-4">
+                          Instruction: {version.command}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
