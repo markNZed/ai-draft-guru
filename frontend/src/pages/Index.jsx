@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { applyCommand } from '@/lib/api';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { Diff, Hunk, parseDiff } from 'react-diff-view'; // Ensure react-diff-view is installed
@@ -56,7 +56,7 @@ const renderDiff = (current, proposed) => {
   return (
     <Diff viewType="split" diffType="modify" hunks={parsedDiff.hunks}>
       {(hunks) =>
-        hunks.map((hunk, idx) => (
+        hunks.map((hunk) => (
           <Hunk key={hunk.content} hunk={hunk} />
         ))
       }
@@ -68,8 +68,8 @@ const Index = () => {
   const [command, setCommand] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [commandHistory, setCommandHistory] = useState([]);
-  const [proposedContent, setProposedContent] = useState(null); // New state
-  const [currentContent, setCurrentContent] = useState(''); // New state
+  const [proposedContent, setProposedContent] = useState(null); // State to track proposed changes
+  const [currentContent, setCurrentContent] = useState(''); // State to track current content
   const markdownContentRef = useRef(''); 
   const editorContainerRef = useRef(null); // Ref to the textarea container
 
@@ -101,8 +101,7 @@ const Index = () => {
 
     // Cleanup on unmount
     return () => {
-      // Optional: Destroy the editor if you want it to be re-initialized on next mount
-      // destroyEasyMDE();
+      destroyEasyMDE(); // Destroy the editor instance on unmount
     };
   }, []);
 
@@ -138,19 +137,43 @@ const Index = () => {
 
   const approveChanges = () => {
     if (proposedContent) {
+      // Update the current content with the proposed changes
       markdownContentRef.current = proposedContent;
-      const easyMDE = getEasyMDEInstance();
-      if (easyMDE) {
-        easyMDE.value(proposedContent);
-      }
       setCurrentContent(proposedContent);
+  
+      // First reset proposedContent to trigger the editor rendering
       setProposedContent(null);
+  
       toast.success('Changes approved and applied!');
     }
   };
+  
+  useEffect(() => {
+    // Only initialize EasyMDE when there's no proposedContent (i.e., back in editing mode)
+    if (proposedContent === null && editorContainerRef.current) {
+      // Destroy any existing instance of EasyMDE
+      destroyEasyMDE();
+  
+      // Initialize EasyMDE with the updated content
+      const easyMDE = initializeEasyMDE(editorContainerRef.current, markdownContentRef.current); 
+  
+      // Set up the change handler again to track changes in the editor
+      if (easyMDE && !easyMDE.isChangeHandlerSet) {
+        easyMDE.codemirror.on('change', () => {
+          markdownContentRef.current = easyMDE.value();
+          setCurrentContent(easyMDE.value());
+        });
+        easyMDE.isChangeHandlerSet = true;
+      }
+      
+      // Ensure the editor content is updated with the approved content
+      easyMDE.value(markdownContentRef.current); // Explicitly set the content in EasyMDE
+    }
+  }, [proposedContent]); // Re-run when proposedContent changes
+  
 
   const rejectChanges = () => {
-    setProposedContent(null);
+    setProposedContent(null); // Reset proposedContent to return to editor view
     toast.info('Proposed changes rejected.');
   };
 
@@ -189,72 +212,82 @@ const Index = () => {
       toast.error('Failed to reset the editor.');
     }
   };
-
+  
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* The @tailwindcss/typography plugin provides a prose class, which gives you pre-styled typography for headings, paragraphs, lists, blockquotes, etc. */}
-        <div className="w-full md:w-2/3 prose"> 
-          {/* Assign the ref to the textarea */}
-          <textarea ref={editorContainerRef} id="markdown-editor" />
-        </div>
-        <div className="w-full md:w-1/3">
-          <Tabs defaultValue="command">
-            <TabsContent value="command">
-              <Textarea
-                placeholder="Enter your command here..."
-                value={command}
-                onChange={handleCommandChange}
-                onKeyDown={handleKeyDown}
-                className="mb-4"
-                disabled={isLoading}
-              />
-              <Button onClick={applyChanges} disabled={isLoading}>
-                {isLoading ? 'Applying...' : 'Apply Changes'}
-              </Button>
-              {commandHistory.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Command History:</h3>
-                  <ul className="list-disc pl-5">
-                    {commandHistory.map((cmd, index) => (
-                      <li key={index} className="mb-1">
-                        <button
-                          onClick={() => reapplyCommand(cmd)}
-                          className="text-blue-500 hover:underline"
-                        >
-                          {cmd}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {/* Clear Storage & Reset Editor Button */}
-              <Button onClick={clearLocalStorage} className="mt-4">
-                Clear Storage & Reset Editor
-              </Button>
-              {/* Proposed Changes Section */}
-              {proposedContent && (
-                <div className="mt-6 p-4 border rounded">
-                  <h3 className="text-lg font-semibold mb-2">Proposed Changes:</h3>
-                  <div className="proposed-changes">
-                    {renderDiff(currentContent, proposedContent)}
+      
+      {/* Conditional Rendering Based on proposedContent */}
+      {!proposedContent ? (
+        // Editor and Command Input Section
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Editor Section */}
+          <div className="w-full md:w-2/3 prose"> 
+            {/* Assign the ref to the textarea */}
+            <textarea ref={editorContainerRef} id="markdown-editor" />
+          </div>
+          
+          {/* Command and History Section */}
+          <div className="w-full md:w-1/3">
+            <Tabs defaultValue="command">
+              <TabsContent value="command">
+                <Textarea
+                  placeholder="Enter your command here..."
+                  value={command}
+                  onChange={handleCommandChange}
+                  onKeyDown={handleKeyDown}
+                  className="mb-4"
+                  disabled={isLoading}
+                />
+                <Button onClick={applyChanges} disabled={isLoading} className="w-full">
+                  {isLoading ? 'Applying...' : 'Apply Changes'}
+                </Button>
+                {commandHistory.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="font-semibold mb-2">Command History:</h3>
+                    <ul className="list-disc pl-5">
+                      {commandHistory.map((cmd, index) => (
+                        <li key={index} className="mb-1">
+                          <button
+                            onClick={() => reapplyCommand(cmd)}
+                            className="text-blue-500 hover:underline"
+                          >
+                            {cmd}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button onClick={approveChanges} color="green">
-                      Approve
-                    </Button>
-                    <Button onClick={rejectChanges} color="red">
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                )}
+                {/* Clear Storage & Reset Editor Button */}
+                <Button onClick={clearLocalStorage} className="mt-4 w-full">
+                  Clear Storage & Reset Editor
+                </Button>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
-      </div>
+      ) : (
+        // Diff and Approval Section
+        <div className="proposed-changes-container">
+          <h2 className="text-xl font-semibold mb-4">Review Proposed Changes</h2>
+          <div className="proposed-changes mb-6">
+            {renderDiff(currentContent, proposedContent)}
+          </div>
+          <div className="flex gap-4">
+            <Button onClick={approveChanges} color="green" className="flex-1">
+              Approve
+            </Button>
+            <Button onClick={rejectChanges} color="red" className="flex-1">
+              Reject
+            </Button>
+          </div>
+          {/* Optional: Add a button to go back to editing without approving/rejecting */}
+          <Button onClick={() => setProposedContent(null)} className="mt-4 w-full">
+            Go Back to Editor
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
