@@ -1,4 +1,6 @@
 // frontend/src/pages/Index.test.jsx
+
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import Index from './Index';
 

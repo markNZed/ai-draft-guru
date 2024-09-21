@@ -72,11 +72,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal Server Error' });
 });
 
-// Start the Server
-app.listen(config.port, () => {
-  logger.info(`Server is running on port ${config.port} NODE_ENV ${config.nodeEnv}`, {
-    requestId: 'system',
+// Only start the server if this file is run directly
+if (process.env.NODE_ENV !== 'test') {
+  pp.listen(config.port, () => {
+    logger.info(`Server is running on port ${config.port} NODE_ENV ${config.nodeEnv}`, {
+      requestId: 'system',
+    });
   });
-});
+}
 
 export default app;

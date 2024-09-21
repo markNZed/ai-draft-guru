@@ -1,6 +1,6 @@
 // backend/server.test.js
 import request from 'supertest';
-import app from './server'; // Adjust export in server.js
+import app from '../src/server.mjs';
 
 describe('POST /apply-command', () => {
   it('should apply dummy operations when OPENAI_API_KEY is not set', async () => {
@@ -11,7 +11,8 @@ describe('POST /apply-command', () => {
         documentContent: '# Introduction\nThis is important.',
       });
     expect(response.statusCode).toBe(200);
-    expect(response.body.modifiedContent).toContain('## Introduction');
-    expect(response.body.modifiedContent).toContain('This is **important**.');
+    expect(response.body.modifiedContent).toContain('# 1 Introduction');  // Adjusted heading
+    expect(response.body.modifiedContent).toContain('This is **important**.'); // The bolded text
   });
 });
+

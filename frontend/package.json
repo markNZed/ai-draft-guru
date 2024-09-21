@@ -9,7 +9,7 @@
         "build": "vite build",
         "preview": "vite preview",
         "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-        "test": "jest",
+        "test": "NODE_OPTIONS=--experimental-vm-modules jest",
         "start": "vite"
     },
     "dependencies": {
@@ -36,6 +36,7 @@
         "tailwindcss-animate": "^1.0.7"
     },
     "devDependencies": {
+        "@babel/preset-react": "^7.24.7",
         "@vitejs/plugin-react": "^4.2.1",
         "autoprefixer": "^10.4.20",
         "eslint": "^8.56.0",

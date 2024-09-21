@@ -11,9 +11,12 @@
     "frontend:dev": "npm run dev --workspace frontend",
     "backend:dev": "npm run dev --workspace backend",
     "build": "npm run build --workspace frontend && npm run build --workspace backend",
-    "start": "concurrently \"npm run start --workspace frontend\" \"npm run start --workspace backend\""
+    "start": "concurrently \"npm run start --workspace frontend\" \"npm run start --workspace backend\"",
+    "test": "jest"
   },
   "devDependencies": {
-    "concurrently": "^7.6.0"
+    "concurrently": "^7.6.0",
+    "jest": "^29.7.0",
+    "jest-esm-transformer": "^1.0.0"
   }
 }
