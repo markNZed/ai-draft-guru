@@ -34,6 +34,7 @@ excluded_dirs=(
   ".git"                          # Directory name to exclude anywhere
   "node_modules"                  # Directory name to exclude anywhere
   "frontend/src/components/ui"  # Specific directory path to exclude
+  "dead"
 )
 
 # Array of specific files to exclude
@@ -44,6 +45,7 @@ excluded_files=(
   ".env"
   "$output_file"          # Automatically exclude the output file from concatenation
   "concat_files.sh"
+  ".gitignore"
 )
 
 # Array of file patterns (using wildcards, e.g., *.svg or *.png)
