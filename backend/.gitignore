@@ -1,2 +1,2 @@
 .env
-./tts-cache
+/tts-cache/

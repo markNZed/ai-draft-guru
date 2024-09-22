@@ -37,16 +37,16 @@ export const applyOperations = async (tree, operations, config, requestId) => {
       try {
         if (op.type === 'convert_to_mp3') {
           // Handle convert_to_mp3 separately
-          const mp3Buffer = await handler(tree, op.parameters, requestId);
+          const mp3Buffer = await handler(tree, op.parameters, requestId, config);
           specialResults.mp3Buffer = mp3Buffer;
           logger.debug(`Applied operation: ${op.type}`, { requestId });
         } else if (op.type === 'convert_to_doc') {
           // Handle convert_to_doc separately
-          const docxBuffer = await handler(tree, op.parameters, requestId);
+          const docxBuffer = await handler(tree, op.parameters, requestId, config);
           specialResults.docxBuffer = docxBuffer;
           logger.debug(`Applied operation: ${op.type}`, { requestId });
         } else {
-          handler(tree, op.parameters, requestId);
+          handler(tree, op.parameters, requestId, config);
           logger.debug(`Applied operation: ${op.type}`, { requestId });
         }
       } catch (error) {

@@ -45,12 +45,12 @@ const hashText = (text) => {
  * @param {string} requestId - The request ID for logging.
  * @returns {Buffer} - The MP3 buffer.
  */
-export const createAudioFromText = async (text, requestId) => {
+export const createAudioFromText = async (text, requestId, voice) => {
   try {
     logger.info('Processing TTS request.', { requestId });
 
     // Generate a unique filename based on the text
-    const textHash = hashText(text);
+    const textHash = hashText(text + voice);
     const cachedFilePath = path.join(CACHE_DIR, `${textHash}.mp3`);
 
     // Check if the audio is already cached
@@ -65,7 +65,7 @@ export const createAudioFromText = async (text, requestId) => {
     // Make the API request to generate speech
     const mp3Response = await openai.audio.speech.create({
       model: 'tts-1',    // TTS model
-      voice: 'alloy',    // Use any other supported voice as needed
+      voice: voice.toLowerCase(),    // Use any other supported voice as needed
       input: text,       // The text to convert to speech
     });
 
