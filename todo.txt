@@ -1,10 +1,7 @@
 
-Inline commands e.g. for podcast generation [speaker:XXX]
-  Would need to return a link - this is true for other transformations too
-    Maybe just force the browser to download
-  Syntax checking with highlighting of problems
+Generate a name for the file that fits the script
 Consider adding context-aware prompts that take into account the current structure and content of the document.
-  Allow for iteraction over parts of the document e.g. for each section ...
+Allow for iteraction over parts of the document e.g. for each section ...
 Tests need testing
 
 Key Components to Implement:

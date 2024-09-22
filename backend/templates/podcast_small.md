@@ -1,24 +1,24 @@
 ---
 speaker_map:
-  - Speaker: Alice
+  - Speaker: Estelle
     TTS_Voice: Shimmer
-  - Speaker: Bob
+  - Speaker: Pierre
     TTS_Voice: Onyx
-  - Speaker: Alloy
+  - Speaker: Pauline
     TTS_Voice: Alloy
-  - Speaker: Echo
+  - Speaker: Albane
     TTS_Voice: Echo
-  - Speaker: Fable
+  - Speaker: Carole
     TTS_Voice: Fable
-  - Speaker: Nova
+  - Speaker: Chloe
     TTS_Voice: Nova
 ---
-[speaker: Alice]
+[speaker: Estelle]
 Hi everyone! Welcome to today's podcast. I’m Alice,
 
-[speaker: Bob]
+[speaker: Pierre]
 Thanks, Alice! I’m Bob.
 
-[speaker: Alice]
+[speaker: Estelle]
 That’s right! AI is making it easier than ever to script.
 
