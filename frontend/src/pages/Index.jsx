@@ -206,31 +206,56 @@ const Index = () => {
 
     try {
       const response = await applyCommand(command, currentContent);
+
+      // Handle MP3 file if present
+      const contentType = response.headers.get('Content-Type');
+      if (contentType === 'audio/mpeg') {
+        // Extract filename from headers if available
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = 'document.mp3';
+        if (disposition && disposition.includes('filename=')) {
+          filename = disposition.split('filename=')[1].replace(/"/g, '');
+        }
+
+        const blob = response.data; 
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url); // Clean up
+        toast.success('MP3 audio has been generated and downloaded.');
+      }
+
+      // Handle DOCX file if present
       if (response.docxBase64) {
-        // Trigger the download of the .docx file
         const byteCharacters = atob(response.docxBase64);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
         const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const blob = new Blob([byteArray], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = response.fileName || 'document.docx';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success('Markdown document has been converted to .doc and downloaded.');
-      } else if (response.modifiedContent) {
-        // Handle proposed content as usual
+        toast.success('Markdown document has been converted to .docx and downloaded.');
+      }
+
+      // Handle modified content if present
+      if (response.modifiedContent) {
         setProposedContent(response.modifiedContent);
         setCommandHistory(prevHistory => [...prevHistory, command]);
         // Add a new version with the associated command
         addNewVersion(response.modifiedContent, command);
         setCommand('');
-      } else {
-        throw new Error('Invalid response from the server.');
       }
     } catch (error) {
       console.error('Error applying changes:', error);
@@ -239,7 +264,6 @@ const Index = () => {
       setIsLoading(false);
     }
   };
-  
 
   const approveChanges = () => {
     if (proposedContent) {

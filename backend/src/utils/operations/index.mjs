@@ -1,9 +1,19 @@
-// backend/utils/operations/index.mjs
+// backend/src/utils/operations/index.mjs
 
-export { changeHeading } from './changeHeading.mjs';
-export { emphasizeText } from './emphasizeText.mjs';
-export { generateToc } from './generateToc.mjs';
-export { addHeadingNumbering } from './addHeadingNumbering.mjs';
-export { convertToDoc } from './convertToDoc.mjs';
+import { changeHeading } from './changeHeading.mjs';
+import { emphasizeText } from './emphasizeText.mjs';
+import { generateToc } from './generateToc.mjs';
+import { addHeadingNumbering } from './addHeadingNumbering.mjs';
+import { convertToDoc } from './convertToDoc.mjs';
+import { convertToMp3 } from './convertToMp3.mjs'; // Import the new operation
 
-// Export additional operations as they are created
+export { 
+  changeHeading, 
+  emphasizeText, 
+  generateToc, 
+  addHeadingNumbering, 
+  convertToDoc,
+  convertToMp3 // Export the new operation
+};
+
+// Existing code...

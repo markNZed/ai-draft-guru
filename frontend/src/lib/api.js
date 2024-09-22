@@ -10,14 +10,39 @@ const apiClient = axios.create({
   },
 });
 
-// Define the applyCommand function
+/**
+ * Applies a command to the document.
+ * 
+ * @param {string} command - The user command.
+ * @param {string} documentContent - The current Markdown content.
+ * @returns {object} - The response data from the backend.
+ */
 export const applyCommand = async (command, documentContent) => {
   try {
-    const response = await apiClient.post('/apply-command', {
-      command,
-      documentContent,
-    });
-    return response.data;
+    const response = await apiClient.post(
+      '/apply-command',
+      { command, documentContent },
+      {
+        responseType: 'blob', // Use 'blob' to handle binary data
+      }
+    );
+
+    // Get the content type from headers
+    const contentType = response.headers['content-type'];
+
+    if (contentType === 'application/json') {
+      // If response is JSON, parse it
+      const reader = new FileReader();
+      const text = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsText(response.data);
+      });
+      const data = JSON.parse(text);
+      return data;
+    } else {
+      return response;
+    }
   } catch (error) {
     // Capture the error message and propagate it
     const message =

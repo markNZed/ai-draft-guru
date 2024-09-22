@@ -39,6 +39,9 @@ router.post(
 
     const { command, documentContent } = req.body;
 
+    // Determine if the command is for MP3 conversion
+    const isMp3Command = command.toLowerCase().includes('convert to mp3');
+
     // Parse YAML front matter if present
     let yamlConfig = {};
     let markdownContent = documentContent; // Use content with row numbers
@@ -78,7 +81,7 @@ router.post(
       // Clean up the AI response by removing code block formatting
       const cleanedAiText = aiText
         .replace(/```json\s*/g, '') // Remove the opening ```json
-        .replace(/```/g, '');       // Remove the closing ```
+        .replace(/```/g, ''); // Remove the closing ```
 
       let operations;
       try {
@@ -102,8 +105,7 @@ router.post(
 
       // Step 3: Parse the document content into AST with row markers
       const processor = unified()
-        .use(remarkParse)
-
+        .use(remarkParse);
       const tree = processor.parse(markdownContent);
       logger.debug('Parsed document content into AST', { tree });
 
@@ -120,7 +122,7 @@ router.post(
       // Step 6: Reattach YAML front matter as HTML comments if it was present
       if (Object.keys(yamlConfig).length > 0) {
         const yamlContent = yaml.dump(yamlConfig).trim();
-        modifiedContent = `<!--\n${yamlContent}\n-->\n${modifiedContent}`;
+        modifiedContent = `<!--\n${yamlContent}\n-->\n\n${modifiedContent}`;
       }
 
       // Prepare the response object
@@ -131,11 +133,28 @@ router.post(
         message: 'Success' 
       };
 
-      // If convert_to_doc was applied, include the .docx file as base64
+      // Handle MP3 conversion
+      if (specialResults.mp3Buffer) {
+        // Set headers and send the MP3 file as a download
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Content-Disposition': 'attachment; filename="document.mp3"',
+          'Content-Length': specialResults.mp3Buffer.length,
+        });
+        logger.debug('Sending MP3 file in response', { requestId });
+        return res.send(specialResults.mp3Buffer);
+      }
+
+      // Handle DOCX conversion if applicable
       if (specialResults.docxBuffer) {
-        const docxBase64 = specialResults.docxBuffer.toString('base64');
-        responseObject.docxBase64 = docxBase64;
-        responseObject.fileName = 'document.docx'; // You can customize the file name
+        // Set headers and send the DOCX file as a download
+        res.set({
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'Content-Disposition': 'attachment; filename="document.docx"',
+          'Content-Length': specialResults.docxBuffer.length,
+        });
+        logger.debug('Sending DOCX file in response', { requestId });
+        return res.send(specialResults.docxBuffer);
       }
 
       // Log final content before sending

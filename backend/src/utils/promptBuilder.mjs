@@ -12,6 +12,7 @@ Available operations:
 1. change_heading: Change the text of a heading that matches a specific string. This can be used multiple times to modify different headings.
 2. emphasize_text: Emphasize specific text by wrapping it with double asterisks. You can also specify the line number to target a specific line using the "lineNumber" parameter, which refers to the line number indicated at the end of the line.
 3. convert_to_doc: Convert the entire Markdown document to a Microsoft Word (.docx) file. This operation does not take additional parameters.
+4. convert_to_mp3: Convert the entire Markdown document to an MP3 audio file using Text-to-Speech. This operation does not take additional parameters.
 
 ### Important Notes about line Numbers:
 - The line numbers (e.g., [LINE 8]) are technical line numbers and may not match the visual content lines. When applying operations, you should target the text on the specified line number, regardless of where the content appears visually.

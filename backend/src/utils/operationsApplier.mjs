@@ -6,6 +6,7 @@ import { emphasizeText } from './operations/emphasizeText.mjs';
 import { generateToc } from './operations/generateToc.mjs';
 import { addHeadingNumbering } from './operations/addHeadingNumbering.mjs';
 import { convertToDoc } from './operations/convertToDoc.mjs';
+import { convertToMp3 } from './operations/convertToMp3.mjs'; // Import the new operation
 
 /**
  * Applies a series of operations to the Markdown AST.
@@ -14,7 +15,7 @@ import { convertToDoc } from './operations/convertToDoc.mjs';
  * @param {Array} operations - An array of operation objects.
  * @param {object} config - Configuration object (e.g., front matter).
  * @param {string} requestId - Unique identifier for the request.
- * @returns {object} - An object containing any special results (e.g., docx buffer).
+ * @returns {object} - An object containing any special results (e.g., docx buffer, mp3 buffer).
  */
 export const applyOperations = async (tree, operations, config, requestId) => {
   // Mapping of operation types to handler functions
@@ -23,7 +24,8 @@ export const applyOperations = async (tree, operations, config, requestId) => {
     emphasize_text: emphasizeText,
     generate_toc: generateToc,
     add_heading_numbering: addHeadingNumbering,
-    convert_to_doc: convertToDoc, // Add this mapping
+    convert_to_doc: convertToDoc,
+    convert_to_mp3: convertToMp3, // Add the new operation
     // Add more mappings as new operations are created
   };
 
@@ -33,7 +35,12 @@ export const applyOperations = async (tree, operations, config, requestId) => {
     const handler = operationHandlers[op.type];
     if (handler) {
       try {
-        if (op.type === 'convert_to_doc') {
+        if (op.type === 'convert_to_mp3') {
+          // Handle convert_to_mp3 separately
+          const mp3Buffer = await handler(tree, op.parameters, requestId);
+          specialResults.mp3Buffer = mp3Buffer;
+          logger.debug(`Applied operation: ${op.type}`, { requestId });
+        } else if (op.type === 'convert_to_doc') {
           // Handle convert_to_doc separately
           const docxBuffer = await handler(tree, op.parameters, requestId);
           specialResults.docxBuffer = docxBuffer;
