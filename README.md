@@ -1,156 +1,166 @@
-Here is the updated README file aligned with the project structure and content:
-
----
-
 # AI-Draft-Guru
 
 ## Project Overview
 
-**AI-Draft-Guru** is a prototype of a web application that enables users to create, edit, and manipulate Markdown documents with AI-assisted commands. This project consists of a **React-based frontend** and a **Node.js (Express) backend** that interfaces with OpenAI's GPT-4o API to process user commands.
+**AI-Draft-Guru** is a web application prototype that enables users to create, edit, and manipulate Markdown documents with the assistance of AI-driven commands. The application consists of a **React-based frontend** and a **Node.js backend** built with Express. The backend uses OpenAI's GPT-4 API to process user commands and apply the requested changes to Markdown documents.
 
-From the end user's perspective, the **AI-Assisted Markdown Document Editor** is a tool that makes creating, editing, and manipulating Markdown documents easier by allowing users to give natural language commands that automatically adjust their documents. Here’s how the tool works for an end user:
+The goal of AI-Draft-Guru is to simplify document editing and formatting by enabling users to issue natural language commands such as "Convert all headings to level 2" or "Bold all instances of 'important'." These commands are processed by AI, which updates the document automatically.
 
----
-
-### **Overview**
-
-The tool allows users to write Markdown content while utilizing AI to make structural or stylistic changes to the document. For example, instead of manually updating headings or formatting text, users can input commands like "Change all first-level headings to second-level" or "Bold all instances of the word 'important'," and the tool automatically makes those changes.
+In addition, the application allows users to **convert Markdown documents into MP3 audio files** using AI-powered Text-to-Speech (TTS) or export documents to **Microsoft Word (DOCX)** format.
 
 ---
 
-### **Key Features**
+## Key Features
 
 1. **Markdown Editor**:
+   - A rich text editor based on EasyMDE for writing and editing Markdown content.
+   - Toolbar options for common Markdown formatting such as headings, bold, italics, and lists.
+   - Markdown features like code blocks, bullet points, and tables are fully supported.
 
-   - The editor provides a standard Markdown writing environment. It supports all typical Markdown syntax (like headings, bullet points, code blocks, etc.).
-   - The interface includes a text area for writing and editing the Markdown document. It is based on the EasyMDE editor, meaning users have toolbar buttons for common Markdown actions (bold, italics, headings, etc.).
-2. **AI Commands**:
+2. **AI-Assisted Editing**:
+   - The user inputs natural language commands to modify the document. For example, "Bold all headings" or "Insert a summary at the end of the document."
+   - After applying the command, the AI processes the document and returns an updated version.
+   - The modified document can be reviewed and approved before changes are saved.
 
-   - **Input Commands**: On the right-hand side of the screen, there is a command input box. Users can write simple instructions to the AI, such as:
-     - "Convert all level 1 headings to level 2."
-     - "Underline every mention of the word 'important'."
-     - "Add a summary at the end of the document."
-   - **Execute Commands**: After typing the command, the user clicks an "Apply Changes" button. The tool sends the command and document content to the backend, where the AI processes the request and modifies the document based on the instructions.
-3. **Highligted review of changes for approval**
-   - The AI will highlight the changes it has made to the document.
-   - The user can then approve the changes and the changes are saved to the document.
-4. **Real-time Feedback**:
-   - Users can see the modifications applied automatically without having to scroll through the entire document and manually make changes.
-5. **Version control with Undo**
-   - Previous versions can be viewed and the curruent changes can be undone.
-6. **Dummy Mode**:
-   - If the AI service is unavailable (e.g., due to missing API keys), the tool will still function. It returns a "dummy" result with predefined changes that showcase how the system operates. This ensures users can continue experimenting with commands even without full AI integration.
+3. **Change Review and Approval**:
+   - The AI highlights proposed changes, allowing users to review and approve or reject them before applying.
+   - Users can track changes through a diff view to ensure accuracy.
 
----
+4. **Version Control & Undo**:
+   - Automatic version tracking enables users to review document history and revert to previous versions.
+   - An undo feature lets users roll back changes applied to the document.
 
-### **How It Works**
+5. **MP3 Conversion**:
+   - The application can convert Markdown content into MP3 format using AI-powered Text-to-Speech (TTS).
+   - You can specify different voices for different speakers within the Markdown document using a predefined YAML speaker map.
 
-1. **Write Markdown**:
-   Users begin by writing or pasting their Markdown content into the editor. This could be anything from a blog post, technical documentation, or notes.
-2. **Enter Command**:
-   In the command box, users type a natural language command that they want the AI to apply to the document. For example, if users want to change all headings of level 1 to level 2, they would type: "Change all level 1 headings to level 2."
-3. **Apply Changes**:
-   Users press the "Apply Changes" button to send the command and current Markdown content to the backend for processing.
-4. **AI Processes the Request**:
-   The tool uses an AI model (OpenAI’s GPT-4) to understand the command and analyze the document. The AI provides instructions that are used to modify the document automatically.
-5. **View Updated Document**:
-   The editor updates with the modified content based on the AI’s response. For example, headings will be changed or specific words may be bolded as instructed by the user.
+6. **DOCX Export**:
+   - Users can export their Markdown document to a Microsoft Word (DOCX) file.
+   - The conversion process maintains the structure of the Markdown, ensuring that headings, lists, and other elements are preserved in the Word document.
+
+7. **Dummy Mode**:
+   - If no OpenAI API key is available, the system operates in "dummy mode," providing a simulated response for testing and demo purposes without real AI integration.
 
 ---
 
-### **Typical Use Cases**
+## Technologies Used
 
-- **Bloggers & Writers**: Writers can use the tool to format their posts efficiently. Instead of manually adjusting formatting for headings, lists, or bold/italic text, they can use commands like "Turn all subheadings into H2" or "Emphasize all instances of key terms."
-- **Developers & Technical Writers**: When documenting code or writing technical guides, developers can use AI commands to structure their documents efficiently. For instance, they can split sections, update code blocks, or insert table of contents quickly.
-- **Students & Note-takers**: Students can use the editor for note-taking, with the ability to reformat notes after initial writing by simply inputting commands like "Make all topic headings bold" or "Underline all important terms."
+### **Frontend**:
+- **React**: Main framework for building the user interface.
+- **Vite**: Build tool and development environment.
+- **Tailwind CSS**: Utility-first CSS framework for styling the application.
+- **EasyMDE**: Markdown editor providing a rich-text-like experience for Markdown writing.
+- **React Query**: For API data fetching and state management.
+- **Axios**: Used to send API requests to the backend.
+- **react-diff-view**: Used for rendering differences between document versions.
+
+### **Backend**:
+- **Node.js**: JavaScript runtime used to run the backend services.
+- **Express.js**: Web framework for building the API and routing.
+- **OpenAI GPT-4 API**: Provides AI functionality for processing user commands.
+- **Unified, Remark-Parse, Remark-Stringify**: Libraries for parsing and manipulating Markdown documents.
+- **Winston**: Logging system used to track server activities.
+- **fluent-ffmpeg**: Used to process and merge audio files for MP3 conversion.
+- **HTMLtoDOCX**: Library for converting HTML output from Markdown into a DOCX format.
 
 ---
 
-### **What Makes It Unique**
+## Installation and Setup
 
-- **Natural Language Processing**: Unlike traditional Markdown editors, this tool empowers users to edit and restructure their documents without manually going through the content line by line. Instead, users can rely on simple, natural language commands.
-- **AI-Driven**: The integration of OpenAI’s GPT-4 means that the tool can understand complex instructions and apply meaningful changes to the Markdown content automatically.
-- **No Markdown Expertise Needed**: While Markdown is user-friendly, some users may find the formatting tedious. This tool removes that barrier by allowing the AI to handle most of the document’s structural and formatting needs.
+### **1. Clone the Repository**:
+```bash
+git clone <YOUR_GIT_URL>
+cd ai-draft-guru
+```
+
+### **2. Install Dependencies**:
+Run the following command to install both frontend and backend dependencies:
+```bash
+npm install
+```
+
+### **3. Environment Setup**:
+Navigate to the `backend/` directory and create a `.env` file by copying the example:
+```bash
+cp .env.example .env
+```
+Add your OpenAI API key to the `.env` file:
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+### **4. Start the Development Servers**:
+Run the development servers for both frontend and backend:
+```bash
+npm run dev
+```
+This will start the Vite frontend server on `localhost:8080` and the Express backend server on `localhost:3001`.
 
 ---
 
-### Technologies Used
+## Available Commands
 
-- **Frontend**:
-
-  - React (with Vite as the build tool)
-  - Tailwind CSS (for styling)
-  - EasyMDE (for Markdown editing)
-  - Axios (for API requests)
-  - React Query (for state management)
-- **Backend**:
-
-  - Node.js
-  - Express.js
-  - OpenAI API
-  - Markdown manipulation (Unified, Remark-Parse, Remark-Stringify)
-
-### Setup and Installation
-
-To set up the project locally:
-
-1. **Clone the repository**:
-
-   ```bash
-   git clone <YOUR_GIT_URL>
-   cd ai-draft-guru
-   ```
-2. **Install dependencies**:
-
-   ```bash
-   npm install
-   ```
-3. **Set up environment variables**:
-
-   - Go to the `backend/` directory and create a `.env` file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Add your OpenAI API key:
-     ```bash
-     OPENAI_API_KEY=your_openai_api_key_here
-     ```
-4. **Run the development servers**:
-
-   ```bash
-   npm run start
-   ```
-
-   This will run both the frontend (Vite) and backend (Node.js) servers.
-
-### Development Commands
-
-- **Start frontend and backend**:
+### **Running the Application**:
+- **Start both frontend and backend**:
   ```bash
   npm run dev
   ```
-- **Start only the backend**:
-  ```bash
-  npm run backend:dev
-  ```
-- **Start only the frontend**:
+- **Start the frontend only**:
   ```bash
   npm run frontend:dev
   ```
-- **Lint the project**:
+- **Start the backend only**:
   ```bash
-  npm run lint
+  npm run backend:dev
   ```
 
-### Environment Variables
-
-- **OPENAI_API_KEY**: Your OpenAI API key
-- **PORT**: Backend server port (default: 3001)
-
-### Deployment
-
-You can deploy this project via various platforms such as Netlify, Vercel, or using the GPT Engineer app.
+### **Linting**:
+To check for code style issues, run the linter:
+```bash
+npm run lint
+```
 
 ---
 
-Feel free to use this README file for your project, ensuring it accurately reflects the structure and technologies you've implemented.
+## Usage
+
+1. **Write Markdown**:
+   Open the Markdown editor and write or paste content into the document area.
+
+2. **Enter AI Commands**:
+   Enter natural language commands like "Bold all headings" or "Make all level 1 headings level 2" in the command input box.
+
+3. **Apply Changes**:
+   Press the "Apply Changes" button to send the document and command to the backend for processing by the AI. The modified document will be returned for review.
+
+4. **Review Changes**:
+   The application highlights changes made by the AI. You can approve or reject changes before saving.
+
+5. **Export to MP3**:
+   - To convert the document into an MP3 file, use the command: "Convert to MP3."
+   - The system will generate an MP3 using the OpenAI Text-to-Speech API. If there are speakers defined in the document (via a speaker map in YAML), it will use different voices for each speaker.
+
+6. **Export to DOCX**:
+   - To export the document to Microsoft Word format, use the command: "Convert to DOCX."
+   - The application will generate a DOCX file and prompt you to download it.
+
+7. **Version Control & Undo**:
+   All document versions are saved automatically. You can undo recent changes or revert to previous versions from the version history.
+
+---
+
+## Example Use Cases
+
+- **Content Writers**: Format blog posts, articles, and reports by issuing commands to adjust headings, bold text, or generate summaries.
+- **Technical Writers**: Automate the formatting of technical documents or code snippets without manually editing Markdown tags.
+- **Podcasters**: Convert podcast scripts in Markdown format to MP3 audio files with Text-to-Speech conversion for each speaker.
+- **Note-Takers**: Quickly apply formatting to notes and documentation using simple language commands, then export to DOCX for sharing.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please ensure that your code adheres to the ESLint configuration and passes all tests before submitting a pull request.
+
+---
+

@@ -3,7 +3,8 @@
 # ============================================================
 # Script: combine_files.sh
 # Description: Concatenates all useful project files into a single file,
-#              excluding specified directories, files, and file patterns (e.g., '*.svg').
+#              excluding specified directories, files, file patterns (e.g., '*.svg'),
+#              and binary files.
 # Usage: ./combine_files.sh [output_file.txt]
 # If no output file is specified, defaults to 'combined_file.txt'.
 # ============================================================
@@ -28,22 +29,22 @@ fi
 # ---------------------------
 
 # Array of directories to exclude
-# Include specific paths and directory names to exclude anywhere
 excluded_dirs=(
-  ".gpt_engineer"                # Directory name to exclude anywhere
-  ".git"                          # Directory name to exclude anywhere
-  "node_modules"                  # Directory name to exclude anywhere
-  "frontend/src/components/ui"  # Specific directory path to exclude
+  ".gpt_engineer"
+  ".git"
+  "node_modules"
+  "frontend/src/components/ui"
   "dead"
+  "tts-cache"
 )
 
 # Array of specific files to exclude
 excluded_files=(
-  "./combine_files.sh"    # Updated to match the script's name
+  "./combine_files.sh"
   "bun.lockb"
-  "package-lock.json"     # Exclude package-lock.json file
+  "package-lock.json"
   ".env"
-  "$output_file"          # Automatically exclude the output file from concatenation
+  "$output_file"
   "concat_files.sh"
   ".gitignore"
   ".prettierrc"
@@ -103,24 +104,29 @@ done
 find_command+=("-print")
 
 # ---------------------------
-# 4. Execute the 'find' Command and Concatenate Files
+# 4. Execute the 'find' Command, Filter Out Binary Files, and Concatenate Files
 # ---------------------------
 
 # Run the find command and process each file
 # Use "IFS=" and "read -r" to correctly handle filenames with spaces or special characters
 "${find_command[@]}" | while IFS= read -r file; do
-  # Add a header with the file name
-  echo "==== $file ====" >> "$output_file"
-  
-  # Append the file's content
-  cat "$file" >> "$output_file"
-  
-  # Add a newline for readability between files
-  echo "" >> "$output_file"
+  # Check if the file is a text file (not binary)
+  if file "$file" | grep -q 'text'; then
+    # Add a header with the file name
+    echo "==== $file ====" >> "$output_file"
+
+    # Append the file's content
+    cat "$file" >> "$output_file"
+
+    # Add a newline for readability between files
+    echo "" >> "$output_file"
+  else
+    echo "Skipping binary file: $file"
+  fi
 done
 
 # ---------------------
 # 5. Completion Message
 # ---------------------
 
-echo "All files have been concatenated into $output_file"
+echo "All text files have been concatenated into $output_file"
