@@ -1,33 +1,39 @@
-// backend/src/utils/operations/convertToDoc.mjs
-
 import { unified } from 'unified';
-import remarkHtml from 'remark-html';
-import htmlDocx from 'html-docx-js';
+import remarkRehype from 'remark-rehype';
+import rehypeStringify from 'rehype-stringify';
 import logger from '../../config/logger.mjs';
+import { toHtml } from 'hast-util-to-html';
+import HTMLtoDOCX from 'html-to-docx';
 
-/**
- * Converts the Markdown AST to a .docx Buffer.
- *
- * @param {object} tree - The Markdown AST.
- * @param {object} parameters - Operation parameters (currently unused).
- * @param {string} requestId - Unique identifier for the request.
- * @returns {Buffer} - The .docx file as a Buffer.
- */
 export const convertToDoc = async (tree, parameters, requestId) => {
-  logger.debug('Converting Markdown to .docx', { requestId });
+  logger.debug('Converting Markdown AST to .docx', { requestId });
 
   try {
-    // Create a processor with both parse and html plugins
+
     const processor = unified()
-      .use(remarkHtml);
+    .use(remarkRehype)      // Convert Markdown AST (MDAST) to HTML AST (HAST)
+    .use(rehypeStringify);  // Convert HTML AST to a string
 
-    // Use the processor to stringify the AST to HTML
-    const html = await processor.stringify(tree);
+    const hast = await processor.run(tree);
 
-    logger.debug('Converted Markdown AST to HTML', { requestId });
+    const html = toHtml(hast);
 
-    // Convert the HTML to .docx Buffer
-    const docxBuffer = htmlDocx.asBuffer(html);
+    // Wrap the generated HTML content with a basic HTML structure
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Generated HTML</title>
+      </head>
+      <body>
+          ${html}
+      </body>
+      </html>
+    `;
+
+    const docxBuffer = await HTMLtoDOCX(fullHtml);
 
     logger.debug('Converted HTML to .docx Buffer', { requestId });
 

@@ -201,9 +201,9 @@ const Index = () => {
       toast.error('Please enter a command before applying changes.');
       return;
     }
-  
+
     setIsLoading(true);
-  
+
     try {
       const response = await applyCommand(command, currentContent);
       if (response.docxBase64) {

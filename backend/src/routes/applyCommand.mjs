@@ -1,4 +1,4 @@
-// backend/routes/applyCommand.mjs
+// backend/src/routes/applyCommand.mjs
 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
