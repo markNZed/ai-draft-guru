@@ -1,37 +1,27 @@
-// backend/src/utils/operations/emphasizeText.mjs
-
 import { visit } from 'unist-util-visit';
 import logger from '../../config/logger.mjs';
 
 /**
  * Emphasizes specific text within the document by wrapping it with a strong node (bold),
  * but skips text that is already bold and only matches whole words.
- * Optionally, the operation can be limited to a specific row number if provided.
+ * Optionally, the operation can be limited to a specific line number if provided.
  *
  * @param {object} tree - The Markdown AST.
  * @param {object} parameters - Operation parameters.
  * @param {string} parameters.text - The text to emphasize.
- * @param {number} [parameters.rowNumber] - Optional row number to restrict the emphasis to.
+ * @param {number} [parameters.lineNumber] - Optional line number to restrict the emphasis to.
  * @param {string} requestId - Unique identifier for the request.
  */
 export const emphasizeText = (tree, parameters, requestId) => {
-  const { text, rowNumber } = parameters;
+  const { text, lineNumber } = parameters;
   if (!text) return;
 
-  let currentRow = null; // Track the current row number
   const wordRegex = new RegExp(`\\b${text}\\b`, 'g');
 
   visit(tree, (node, index, parent) => {
-    // Detect 'rowNumber' nodes to track the current row
-    if (node.type === 'rowNumber') {
-      currentRow = node.rowNumber; // Because the number is at the end of the line
-      logger.debug(`Found row: ${currentRow}, target row: ${rowNumber}`, { requestId });
-      return;
-    }
-
-    // If a specific row number is provided, only emphasize text on that row
-    if (rowNumber && currentRow !== rowNumber) {
-      logger.debug(`Skipping node not in target row: ${node.value}`, { requestId });
+    // If a specific line number is provided, only emphasize text on that line
+    if (lineNumber && node.position && node.position.start.line !== lineNumber) {
+      logger.debug(`Skipping node line ${node.position.start.line} not target line ${lineNumber}: ${node.value}`, { requestId });
       return;
     }
 

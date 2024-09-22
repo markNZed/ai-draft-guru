@@ -10,13 +10,11 @@ ${documentContent}
 
 Available operations:
 1. change_heading: Change the text of a heading that matches a specific string. This can be used multiple times to modify different headings.
-2. emphasize_text: Emphasize specific text by wrapping it with double asterisks. You can also specify the row number to target a specific row using the "rowNumber" parameter, which refers to the row number indicated at the end of the row.
+2. emphasize_text: Emphasize specific text by wrapping it with double asterisks. You can also specify the line number to target a specific line using the "lineNumber" parameter, which refers to the line number indicated at the end of the line.
 
-### Important Notes about Row Numbers:
-- The row numbers (e.g., [ROW 8]) are technical row numbers and may not match the visual content lines. When applying operations, you should target the text on the specified row number, regardless of where the content appears visually.
-- Use the technical row numbers provided at the end of each row to determine which row to modify.
-- Do not calculate rows or positions based on the visual appearance of the document content. Trust the provided row numbers.
-- For example, if you are asked to modify line 5 then modify the line ending with [ROW 5] not the fifth line from the top.
+### Important Notes about line Numbers:
+- The line numbers (e.g., [LINE 8]) are technical line numbers and may not match the visual content lines. When applying operations, you should target the text on the specified line number, regardless of where the content appears visually.
+- Use the technical line numbers provided at the end of each line to determine which line the operation should modify.
 
 Provide the instructions in the following JSON format:
 
@@ -78,7 +76,7 @@ Provide the instructions in the following JSON format:
   ]
 }
 
-3. If the command is "Emphasize the word 'important' only on row 3", the JSON should look like:
+3. If the command is "Emphasize the word 'important' only on line 3", the JSON should look like:
 
 {
   "operations": [
@@ -86,7 +84,7 @@ Provide the instructions in the following JSON format:
       "type": "emphasize_text",
       "parameters": {
         "text": "important",
-        "rowNumber": 3
+        "lineNumber": 3
       }
     }
   ]

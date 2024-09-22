@@ -13,9 +13,6 @@ import remarkParse from 'remark-parse';
 import remarkStringify from 'remark-stringify';
 import yaml from 'js-yaml';
 import { addRowNumbers } from '../utils/rowNumberUtils.mjs';
-import { parseRowMarkers } from '../utils/parseRowMarkers.mjs';
-import { removeRowNumberNodes } from '../utils/removeRowNumberNodes.mjs';
-import { remove } from 'unist-util-remove'; // For removing nodes
 
 const router = express.Router();
 
@@ -44,9 +41,6 @@ router.post(
 
     const testProcessor = unified().use(remarkParse);
 
-    const testTree = testProcessor.parse(documentContent);
-    logger.debug('Parsed original document content into AST', { testTree });
-
     // Parse YAML front matter if present
     let yamlConfig = {};
     let markdownContent = documentContent; // Use content with row numbers
@@ -62,6 +56,8 @@ router.post(
       });
       // Proceed without YAML configuration
     }
+
+    logger.debug('IContent before row numbers', { markdownContent });
 
       // Step 1: Insert row numbers (appended to lines)
     const contentWithLineNumbers = addRowNumbers(markdownContent);
@@ -115,22 +111,17 @@ router.post(
       // Step 3: Parse the document content into AST with row markers
       const processor = unified()
         .use(remarkParse)
-        .use(parseRowMarkers);  // Add the custom plugin here to handle [ROW X]
 
-      const tree = processor.parse(contentWithLineNumbers);
+      const tree = processor.parse(markdownContent);
       logger.debug('Parsed document content into AST', { tree });
 
       // Execute the processor to apply plugins
-      await processor.run(tree);
-      logger.debug('Executed plugins on AST', { requestId, tree });
+      //await processor.run(tree);
+      //logger.debug('Executed plugins on AST', { requestId, tree });
 
       // Step 4: Apply the operations to the AST
       applyOperations(tree, operations.operations, yamlConfig, requestId);
       logger.debug('Applied operations to AST', { requestId });
-
-      // Step 5: Remove `rowNumber` nodes before serialization
-      removeRowNumberNodes()(tree); 
-      logger.debug('Removed rowNumber nodes from AST', { requestId, tree });
 
       // Step 6: Serialize the modified AST back to Markdown
       const serializer = unified()
