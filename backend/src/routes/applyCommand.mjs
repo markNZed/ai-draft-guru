@@ -12,7 +12,10 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkStringify from 'remark-stringify';
 import yaml from 'js-yaml';
-import { config } from '../config/index.mjs';
+import { addRowNumbers } from '../utils/rowNumberUtils.mjs';
+import { parseRowMarkers } from '../utils/parseRowMarkers.mjs';
+import { removeRowNumberNodes } from '../utils/removeRowNumberNodes.mjs';
+import { remove } from 'unist-util-remove'; // For removing nodes
 
 const router = express.Router();
 
@@ -39,7 +42,33 @@ router.post(
 
     const { command, documentContent } = req.body;
 
-    const prompt = constructPrompt(command, documentContent);
+    const testProcessor = unified().use(remarkParse);
+
+    const testTree = testProcessor.parse(documentContent);
+    logger.debug('Parsed original document content into AST', { testTree });
+
+    // Parse YAML front matter if present
+    let yamlConfig = {};
+    let markdownContent = documentContent; // Use content with row numbers
+    try {
+      const parsed = parseYAMLFrontMatter(documentContent);
+      yamlConfig = parsed.config;
+      markdownContent = parsed.markdownContent;
+      logger.debug('Parsed YAML front matter', { requestId, config: yamlConfig });
+    } catch (yamlError) {
+      logger.warn('Failed to parse YAML front matter.', {
+        requestId,
+        error: yamlError.message,
+      });
+      // Proceed without YAML configuration
+    }
+
+      // Step 1: Insert row numbers (appended to lines)
+    const contentWithLineNumbers = addRowNumbers(markdownContent);
+    logger.debug('Inserted row numbers into content', { contentWithLineNumbers });
+
+    // Step 2: Construct prompt with modified content
+    const prompt = constructPrompt(command, contentWithLineNumbers);
     logger.debug('Constructed prompt for OpenAI', { requestId, prompt });
 
     try {
@@ -59,8 +88,8 @@ router.post(
 
       // Clean up the AI response by removing code block formatting
       const cleanedAiText = aiText
-        .replace(/```json\s*/g, '')  // Remove the opening ```json
-        .replace(/```/g, '');        // Remove the closing ```
+        .replace(/```json\s*/g, '') // Remove the opening ```json
+        .replace(/```/g, '');       // Remove the closing ```
 
       let operations;
       try {
@@ -82,46 +111,45 @@ router.post(
           .json({ message: 'Invalid response format from AI service.' });
       }
 
-      // Parse YAML front matter if present
-      let config = {};
-      let markdownContent = documentContent;
-      try {
-        const parsed = parseYAMLFrontMatter(documentContent);
-        config = parsed.config;
-        markdownContent = parsed.markdownContent;
-        logger.debug('Parsed YAML front matter', { requestId, config });
-      } catch (yamlError) {
-        logger.warn('Failed to parse YAML front matter.', {
-          requestId,
-          error: yamlError.message,
-        });
-        // Proceed without YAML configuration
-      }
 
-      // Parse the original document content into AST
-      const parser = unified().use(remarkParse);
-      const tree = parser.parse(markdownContent);
-      logger.debug('Parsed document content into AST', { requestId });
+      // Step 3: Parse the document content into AST with row markers
+      const processor = unified()
+        .use(remarkParse)
+        .use(parseRowMarkers);  // Add the custom plugin here to handle [ROW X]
 
-      // Apply the operations to the AST
-      applyOperations(tree, operations.operations, config, requestId);
+      const tree = processor.parse(contentWithLineNumbers);
+      logger.debug('Parsed document content into AST', { tree });
+
+      // Execute the processor to apply plugins
+      await processor.run(tree);
+      logger.debug('Executed plugins on AST', { requestId, tree });
+
+      // Step 4: Apply the operations to the AST
+      applyOperations(tree, operations.operations, yamlConfig, requestId);
       logger.debug('Applied operations to AST', { requestId });
 
-      // Serialize the modified AST back to Markdown
-      const serializer = unified().use(remarkStringify);
-      let modifiedContent = serializer.stringify(tree);
-      logger.debug('Serialized modified AST back to Markdown', { requestId });
+      // Step 5: Remove `rowNumber` nodes before serialization
+      removeRowNumberNodes()(tree); 
+      logger.debug('Removed rowNumber nodes from AST', { requestId, tree });
 
-      // Reattach YAML front matter as HTML comments if it was present
-      if (Object.keys(config).length > 0) {
-        const yamlContent = yaml.dump(config).trim();
+      // Step 6: Serialize the modified AST back to Markdown
+      const serializer = unified()
+        .use(remarkStringify);
+      let modifiedContent = serializer.stringify(tree);
+      logger.debug('Serialized modifiedContent:', { modifiedContent });
+
+      // Step 8: Reattach YAML front matter as HTML comments if it was present
+      if (Object.keys(yamlConfig).length > 0) {
+        const yamlContent = yaml.dump(yamlConfig).trim();
         modifiedContent = `<!--\n${yamlContent}\n-->\n\n${modifiedContent}`;
       }
 
-      logger.info('Document successfully modified', { requestId });
+      // Log final content before sending
+      logger.debug('Final modifiedContent before sending:', { yamlConfig, modifiedContent });
+
       res.json({ 
         originalContent: documentContent, 
-        modifiedContent, 
+        modifiedContent: modifiedContent, 
         operationsApplied: operations.operations,
         message: 'Success' 
       });

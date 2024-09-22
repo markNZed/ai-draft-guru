@@ -1,16 +1,18 @@
 // backend/utils/frontMatterParser.mjs
 
 import yaml from 'js-yaml';
+import { removeRowNumbers } from './rowNumberUtils.mjs';
 
 export const parseYAMLFrontMatter = (content) => {
   // Regex to match an HTML comment-based front matter block
-  const htmlCommentRegex = /^<!--\n([\s\S]*?)\n-->\n([\s\S]*)$/;
+  const htmlCommentRegex = /^<!--([\s\S]*?)\n-->([\s\S]*)$/;
   const match = content.match(htmlCommentRegex);
 
   if (match) {
-    const yamlContent = match[1]; // The YAML-like configuration inside the comment
+    let yamlContent = match[1]; // The YAML-like configuration inside the comment
     const markdownContent = match[2]; // The remaining markdown content
     try {
+      yamlContent = removeRowNumbers(yamlContent)
       const config = yaml.load(yamlContent); // Parse the config from YAML format
       return { config, markdownContent };
     } catch (error) {

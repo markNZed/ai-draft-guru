@@ -1,7 +1,7 @@
-Implement a diff view or highlighting system to show users exactly what the AI changed in response to their commands.
-Undo
-Versioning
+
 Need placeholders to know where to operate on the text e.g. line numbers that are inserted
+  This will be in the backend
+    Empty paragraphs ?
 Inline commands e.g. for podcast generation [speaker:XXX]
   Would need to return a link - this is true for other transformations too
     Maybe just force the browser to download

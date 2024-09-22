@@ -31,12 +31,14 @@ The tool allows users to write Markdown content while utilizing AI to make struc
      - "Underline every mention of the word 'important'."
      - "Add a summary at the end of the document."
    - **Execute Commands**: After typing the command, the user clicks an "Apply Changes" button. The tool sends the command and document content to the backend, where the AI processes the request and modifies the document based on the instructions.
-3. **Real-time Feedback**:
-
-   - After applying the AI command, the document immediately updates to reflect the changes.
+3. **Highligted review of changes for approval**
+   - The AI will highlight the changes it has made to the document.
+   - The user can then approve the changes and the changes are saved to the document.
+4. **Real-time Feedback**:
    - Users can see the modifications applied automatically without having to scroll through the entire document and manually make changes.
-4. **Dummy Mode**:
-
+5. **Version control with Undo**
+   - Previous versions can be viewed and the curruent changes can be undone.
+6. **Dummy Mode**:
    - If the AI service is unavailable (e.g., due to missing API keys), the tool will still function. It returns a "dummy" result with predefined changes that showcase how the system operates. This ensures users can continue experimenting with commands even without full AI integration.
 
 ---
@@ -81,7 +83,6 @@ The tool allows users to write Markdown content while utilizing AI to make struc
   - EasyMDE (for Markdown editing)
   - Axios (for API requests)
   - React Query (for state management)
-
 - **Backend**:
 
   - Node.js
