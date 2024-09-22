@@ -46,6 +46,7 @@ excluded_files=(
   "$output_file"          # Automatically exclude the output file from concatenation
   "concat_files.sh"
   ".gitignore"
+  ".prettierrc"
 )
 
 # Array of file patterns (using wildcards, e.g., *.svg or *.png)

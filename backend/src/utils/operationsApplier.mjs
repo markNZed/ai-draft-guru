@@ -1,10 +1,11 @@
-// backend/utils/operationsApplier.mjs
+// backend/src/utils/operationsApplier.mjs
 
 import logger from '../config/logger.mjs';
 import { changeHeading } from './operations/changeHeading.mjs';
 import { emphasizeText } from './operations/emphasizeText.mjs';
 import { generateToc } from './operations/generateToc.mjs';
 import { addHeadingNumbering } from './operations/addHeadingNumbering.mjs';
+import { convertToDoc } from './operations/convertToDoc.mjs';
 
 /**
  * Applies a series of operations to the Markdown AST.
@@ -13,23 +14,34 @@ import { addHeadingNumbering } from './operations/addHeadingNumbering.mjs';
  * @param {Array} operations - An array of operation objects.
  * @param {object} config - Configuration object (e.g., front matter).
  * @param {string} requestId - Unique identifier for the request.
+ * @returns {object} - An object containing any special results (e.g., docx buffer).
  */
-export const applyOperations = (tree, operations, config, requestId) => {
+export const applyOperations = async (tree, operations, config, requestId) => {
   // Mapping of operation types to handler functions
   const operationHandlers = {
     change_heading: changeHeading,
     emphasize_text: emphasizeText,
     generate_toc: generateToc,
     add_heading_numbering: addHeadingNumbering,
+    convert_to_doc: convertToDoc, // Add this mapping
     // Add more mappings as new operations are created
   };
 
-  operations.forEach((op) => {
+  const specialResults = {};
+
+  for (const op of operations) {
     const handler = operationHandlers[op.type];
     if (handler) {
       try {
-        handler(tree, op.parameters, requestId);
-        logger.debug(`Applied operation: ${op.type}`, { requestId });
+        if (op.type === 'convert_to_doc') {
+          // Handle convert_to_doc separately
+          const docxBuffer = await handler(tree, op.parameters, requestId);
+          specialResults.docxBuffer = docxBuffer;
+          logger.debug(`Applied operation: ${op.type}`, { requestId });
+        } else {
+          handler(tree, op.parameters, requestId);
+          logger.debug(`Applied operation: ${op.type}`, { requestId });
+        }
       } catch (error) {
         logger.error(`Failed to apply operation: ${op.type}`, { requestId, error: error.message });
         // Depending on requirements, you might choose to continue or halt on error
@@ -37,5 +49,7 @@ export const applyOperations = (tree, operations, config, requestId) => {
     } else {
       logger.warn(`Unknown operation type: ${op.type}`, { requestId });
     }
-  });
+  }
+
+  return specialResults;
 };

@@ -201,25 +201,30 @@ const Index = () => {
       toast.error('Please enter a command before applying changes.');
       return;
     }
-
+  
     setIsLoading(true);
-
+  
     try {
       const response = await applyCommand(command, currentContent);
-      if (response && response.modifiedContent) {
-        // Push the current content to the undo stack before applying changes
-        setUndoStack(prevUndo => {
-          const updatedUndo = [...prevUndo, currentContent];
-          saveUndoStack(updatedUndo);
-          return updatedUndo;
-        });
-
-        // Clear previous proposedContent before setting new one
-        setProposedContent(null);
-        // Small delay to ensure state is cleared
-        setTimeout(() => {
-          setProposedContent(response.modifiedContent);
-        }, 0);
+      if (response.docxBase64) {
+        // Trigger the download of the .docx file
+        const byteCharacters = atob(response.docxBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = response.fileName || 'document.docx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Markdown document has been converted to .doc and downloaded.');
+      } else if (response.modifiedContent) {
+        // Handle proposed content as usual
+        setProposedContent(response.modifiedContent);
         setCommandHistory(prevHistory => [...prevHistory, command]);
         // Add a new version with the associated command
         addNewVersion(response.modifiedContent, command);
@@ -234,6 +239,7 @@ const Index = () => {
       setIsLoading(false);
     }
   };
+  
 
   const approveChanges = () => {
     if (proposedContent) {

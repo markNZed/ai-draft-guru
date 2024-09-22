@@ -4,4 +4,6 @@ export { changeHeading } from './changeHeading.mjs';
 export { emphasizeText } from './emphasizeText.mjs';
 export { generateToc } from './generateToc.mjs';
 export { addHeadingNumbering } from './addHeadingNumbering.mjs';
+export { convertToDoc } from './convertToDoc.mjs';
+
 // Export additional operations as they are created
