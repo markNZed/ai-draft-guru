@@ -57,15 +57,15 @@ router.post(
       // Proceed without YAML configuration
     }
 
-    logger.debug('IContent before row numbers', { markdownContent });
+    //logger.debug('IContent before row numbers', { markdownContent });
 
       // Step 1: Insert row numbers (appended to lines)
     const contentWithLineNumbers = addRowNumbers(markdownContent);
-    logger.debug('Inserted row numbers into content', { contentWithLineNumbers });
+    //logger.debug('Inserted row numbers into content', { contentWithLineNumbers });
 
     // Step 2: Construct prompt with modified content
     const prompt = constructPrompt(command, contentWithLineNumbers);
-    logger.debug('Constructed prompt for OpenAI', { requestId, prompt });
+    //logger.debug('Constructed prompt for OpenAI', { requestId, prompt });
 
     try {
       const aiText = await createChatCompletion(
@@ -115,10 +115,6 @@ router.post(
       const tree = processor.parse(markdownContent);
       logger.debug('Parsed document content into AST', { tree });
 
-      // Execute the processor to apply plugins
-      //await processor.run(tree);
-      //logger.debug('Executed plugins on AST', { requestId, tree });
-
       // Step 4: Apply the operations to the AST
       applyOperations(tree, operations.operations, yamlConfig, requestId);
       logger.debug('Applied operations to AST', { requestId });
@@ -127,12 +123,12 @@ router.post(
       const serializer = unified()
         .use(remarkStringify);
       let modifiedContent = serializer.stringify(tree);
-      logger.debug('Serialized modifiedContent:', { modifiedContent });
+      //logger.debug('Serialized modifiedContent:', { modifiedContent });
 
       // Step 8: Reattach YAML front matter as HTML comments if it was present
       if (Object.keys(yamlConfig).length > 0) {
         const yamlContent = yaml.dump(yamlConfig).trim();
-        modifiedContent = `<!--\n${yamlContent}\n-->\n\n${modifiedContent}`;
+        modifiedContent = `<!--\n${yamlContent}\n-->\n${modifiedContent}`;
       }
 
       // Log final content before sending

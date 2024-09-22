@@ -21,7 +21,7 @@ export const emphasizeText = (tree, parameters, requestId) => {
   visit(tree, (node, index, parent) => {
     // If a specific line number is provided, only emphasize text on that line
     if (lineNumber && node.position && node.position.start.line !== lineNumber) {
-      logger.debug(`Skipping node line ${node.position.start.line} not target line ${lineNumber}: ${node.value}`, { requestId });
+      //logger.debug(`Skipping node line ${node.position.start.line} not target line ${lineNumber}: ${node.value}`, { requestId });
       return;
     }
 
