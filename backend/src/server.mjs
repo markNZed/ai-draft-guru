@@ -15,6 +15,7 @@ import { rateLimiter } from './middleware/rateLimiter.mjs';
 import { errorHandler } from './middleware/errorHandler.mjs';
 import applyCommandRouter from './routes/applyCommand.mjs';
 import templateRouter from './routes/template.mjs';
+import templatesRouter from './routes/templates.mjs';
 
 import helmet from 'helmet';
 
@@ -60,6 +61,7 @@ app.use(express.json());
 // Mount routers
 app.use('/apply-command', applyCommandRouter);
 app.use('/template', templateRouter);
+app.use('/templates', templatesRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

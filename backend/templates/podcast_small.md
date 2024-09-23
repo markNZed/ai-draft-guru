@@ -14,10 +14,10 @@ speaker_map:
     TTS_Voice: Nova
 ---
 [speaker: Estelle]
-Hi everyone! Welcome to today's podcast. I’m Alice,
+Hi everyone! Welcome to today's podcast. I’m Estelle,
 
 [speaker: Pierre]
-Thanks, Alice! I’m Bob.
+Thanks, Alice! I’m Pierre.
 
 [speaker: Estelle]
 That’s right! AI is making it easier than ever to script.

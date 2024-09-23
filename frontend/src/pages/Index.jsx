@@ -15,9 +15,9 @@ import 'react-diff-view/style/index.css'; // Import react-diff-view styles
 import { diffLines, formatLines } from 'unidiff'; // Import unidiff
 
 // Define the fetchMarkdownTemplate function
-const fetchMarkdownTemplate = async () => {
+const fetchMarkdownTemplate = async (templateName = 'default') => { // Accept a templateName parameter with 'default' as fallback
   try {
-    const response = await fetch('/api/template', {
+    const response = await fetch(`/api/template?name=${encodeURIComponent(templateName)}`, { // Pass the templateName as a query parameter
       headers: {
         'Content-Type': 'text/markdown',
       },
@@ -77,6 +77,81 @@ const Index = () => {
 
   const LOCAL_STORAGE_KEY_VERSIONS = "smde_markdown_versions";
   const LOCAL_STORAGE_KEY_UNDO = "smde_markdown_undo";
+
+  const [selectedTemplate, setSelectedTemplate] = useState('default'); // New state for selected template
+  const [availableTemplates, setAvailableTemplates] = useState([]); // New state for template list
+
+  // Define available templates (initially empty)
+  // const availableTemplates = [
+  //   { label: 'Default', value: 'default' },
+  //   { label: 'Small', value: 'small' },
+  //   { label: 'Podcast Small', value: 'podcast_small' },
+  //   // Add more templates here if needed
+  // ];
+
+  // Function to fetch the list of available templates
+  const fetchAvailableTemplates = async () => {
+    try {
+      const response = await fetch('/api/templates');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      // Map templates to include labels (capitalize the first letter)
+      const templatesWithLabels = data.templates.map((template) => ({
+        label: template
+          .split('_')
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' '),
+        value: template,
+      }));
+      setAvailableTemplates(templatesWithLabels);
+    } catch (error) {
+      console.error('Error fetching available templates:', error);
+      toast.error('Failed to load available templates.');
+    }
+  };
+
+  // Fetch available templates on component mount
+  useEffect(() => {
+    fetchAvailableTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ... existing useEffect and other functions
+
+  // Function to handle template selection
+  const handleTemplateChange = async (e) => {
+    const templateName = e.target.value;
+    setSelectedTemplate(templateName);
+
+    const templateContent = await fetchMarkdownTemplate(templateName);
+    if (templateContent === null) {
+      return; // Do not proceed if fetching failed
+    }
+
+    // Push the current content to the undo stack before loading a new template
+    setUndoStack((prevUndo) => {
+      const updatedUndo = [...prevUndo, markdownContentRef.current];
+      saveUndoStack(updatedUndo);
+      return updatedUndo;
+    });
+
+    // Update the editor with the new template content
+    markdownContentRef.current = templateContent;
+    setCurrentContent(templateContent);
+    const easyMDE = getEasyMDEInstance();
+    if (easyMDE) {
+      easyMDE.value(templateContent);
+    }
+
+    setProposedContent(null);
+
+    // Add a new version with the template loading action
+    addNewVersion(templateContent, `Loaded template: ${templateName}`);
+
+    toast.success(`Template "${templateName}" loaded successfully!`);
+  };
 
   // Function to load versions from localStorage
   const loadVersions = () => {
@@ -426,17 +501,41 @@ const Index = () => {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
-      
+
+      {/* Dropdown to select templates */}
+      <div className="mb-4">
+        <label htmlFor="template-select" className="block mb-2 font-semibold">
+          Choose Template:
+        </label>
+        <select
+          id="template-select"
+          value={selectedTemplate}
+          onChange={handleTemplateChange}
+          className="w-full p-2 border rounded"
+          disabled={isLoading || availableTemplates.length === 0}
+        >
+          {availableTemplates.length === 0 ? (
+            <option>No templates available.</option>
+          ) : (
+            availableTemplates.map((template) => (
+              <option key={template.value} value={template.value}>
+                {template.label}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+
       {/* Conditional Rendering Based on proposedContent */}
       {!proposedContent ? (
         // Editor and Command Input Section
         <div className="flex flex-col md:flex-row gap-4">
           {/* Editor Section */}
-          <div className="w-full md:w-2/3 prose"> 
+          <div className="w-full md:w-2/3 prose">
             {/* Assign the ref to the textarea */}
             <textarea ref={editorContainerRef} id="markdown-editor" />
           </div>
-          
+
           {/* Command and History Section */}
           <div className="w-full md:w-1/3">
             <Tabs defaultValue="command">

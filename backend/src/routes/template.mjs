@@ -1,5 +1,4 @@
-// backend/routes/template.mjs
-
+// backend/src/routes/template.mjs
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 import logger from '../config/logger.mjs';
@@ -11,10 +10,15 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const { id: requestId } = req;
-    logger.debug('Received /template request', { requestId });
+    const { name } = req.query; // Get the template name from query parameters
+    logger.debug('Received /template request', { requestId, name });
+
+    if (!name) {
+      return res.status(400).json({ message: 'Template name is required' });
+    }
 
     try {
-      const processedTemplate = await getProcessedTemplate(requestId);
+      const processedTemplate = await getProcessedTemplate(requestId, name); // Pass the template name
       res.setHeader('Content-Type', 'text/markdown');
       res.send(processedTemplate);
     } catch (error) {
