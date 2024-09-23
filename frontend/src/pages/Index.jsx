@@ -599,7 +599,7 @@ const Index = () => {
                   <div className="mt-4">
                     <h3 className="font-semibold mb-2">Command History:</h3>
                     <ul className="list-disc pl-5">
-                      {commandHistory.map((cmd, index) => (
+                      {[...commandHistory].reverse().map((cmd, index) => (
                         <li key={index} className="mb-1">
                           <button
                             onClick={() => reapplyCommand(cmd)}
