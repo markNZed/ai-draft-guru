@@ -1,15 +1,13 @@
-Test operations
-Choose template and load
+Allow for iteraction over parts of the document e.g. for each section ...
 Project folder with multiple documents (can be loaded for context)
+Test all operations
 Generate a name for the file that fits the script
 Generate sound effects
 Generate music intro/outro
 Operations on selections
 Integrate pre-recorded sections
-Allow for generating a script from a description.
 Progress indicator
-Consider adding context-aware prompts that take into account the current structure and content of the document.
-Allow for iteraction over parts of the document e.g. for each section ...
+Context-aware prompts that take into account the current structure and content of the document.
 Tests need testing
 
 Key Components to Implement:

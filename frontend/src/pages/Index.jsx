@@ -8,11 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { applyCommand } from '@/lib/api';
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import DOMPurify from 'dompurify';
-import { marked } from 'marked';
 import { Diff, Hunk, parseDiff } from 'react-diff-view'; // Ensure react-diff-view is installed
 import 'react-diff-view/style/index.css'; // Import react-diff-view styles
 import { diffLines, formatLines } from 'unidiff'; // Import unidiff
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Adjust the path as needed
 
 // Define the fetchMarkdownTemplate function
 const fetchMarkdownTemplate = async (templateName = 'default') => { // Accept a templateName parameter with 'default' as fallback
@@ -80,6 +79,9 @@ const Index = () => {
 
   const [selectedTemplate, setSelectedTemplate] = useState('default'); // New state for selected template
   const [availableTemplates, setAvailableTemplates] = useState([]); // New state for template list
+
+  const [commandType, setCommandType] = useState('predefined'); // 'predefined' or 'free-form'
+
 
   // Define available templates (initially empty)
   // const availableTemplates = [
@@ -272,15 +274,17 @@ const Index = () => {
   };
 
   const applyChanges = async () => {
-    if (!command.trim()) {
-      toast.error('Please enter a command before applying changes.');
+    let typeToSend = '';
+
+    if (!command) {
+      toast.error('Please select a command.');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await applyCommand(command, currentContent);
+      const response = await applyCommand(command, currentContent, commandType);
 
       if (response.isJSON) {
         // Handle modified content if present
@@ -540,6 +544,23 @@ const Index = () => {
           <div className="w-full md:w-1/3">
             <Tabs defaultValue="command">
               <TabsContent value="command">
+                <div className="mb-4">
+                  <label className="block mb-2 font-semibold">Command Type:</label>
+                  <RadioGroup
+                    value={commandType}
+                    onValueChange={(value) => setCommandType(value)}
+                    className="flex space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="predefined" id="predefined" />
+                      <label htmlFor="predefined">Predefined</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="free-form" id="free-form" />
+                      <label htmlFor="free-form">Free Form</label>
+                    </div>
+                  </RadioGroup>
+                </div>
                 <Textarea
                   placeholder="Enter your command here..."
                   value={command}

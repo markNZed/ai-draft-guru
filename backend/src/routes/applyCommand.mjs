@@ -37,10 +37,7 @@ router.post(
         .json({ message: 'Invalid input.', errors: errors.array() });
     }
 
-    const { command, documentContent } = req.body;
-
-    // Determine if the command is for MP3 conversion
-    const isMp3Command = command.toLowerCase().includes('convert to mp3');
+    const { command, documentContent, type } = req.body;
 
     // Parse YAML front matter if present
     let yamlConfig = {};
@@ -61,7 +58,12 @@ router.post(
     // Step 1: Insert row numbers (appended to lines)
     const contentWithLineNumbers = addRowNumbers(markdownContent);
     // Step 2: Construct prompt with modified content
-    const prompt = constructPrompt(command, contentWithLineNumbers);
+    let prompt;
+    if (type === 'free-form') {
+      prompt = constructPrompt(command, type, markdownContent);
+    } else {
+      prompt = constructPrompt(command, type, contentWithLineNumbers);
+    }
 
     try {
       const aiText = await createChatCompletion(
@@ -81,43 +83,51 @@ router.post(
       // Clean up the AI response by removing code block formatting
       const cleanedAiText = aiText
         .replace(/```json\s*/g, '') // Remove the opening ```json
+        .replace(/```markdown\s*/g, '') // Remove the opening ```markdown
         .replace(/```/g, ''); // Remove the closing ```
 
-      let operations;
-      try {
-        operations = JSON.parse(cleanedAiText);
-        if (!operations.operations || !Array.isArray(operations.operations)) {
-          throw new Error('Invalid operations format.');
+      let modifiedContent = '';
+      let operations = {};
+      let specialResults = {};
+
+      if (type === 'free-form') {
+        modifiedContent = aiText;
+      } else {
+        try {
+          operations = JSON.parse(cleanedAiText);
+          if (!operations.operations || !Array.isArray(operations.operations)) {
+            throw new Error('Invalid operations format.');
+          }
+          logger.debug('Parsed operations from AI response', {
+            requestId,
+            operations,
+          });
+        } catch (parseError) {
+          logger.error('Error parsing AI response as JSON', {
+            requestId,
+            error: parseError.message,
+          });
+          return res
+            .status(500)
+            .json({ message: 'Invalid response format from AI service.' });
         }
-        logger.debug('Parsed operations from AI response', {
-          requestId,
-          operations,
-        });
-      } catch (parseError) {
-        logger.error('Error parsing AI response as JSON', {
-          requestId,
-          error: parseError.message,
-        });
-        return res
-          .status(500)
-          .json({ message: 'Invalid response format from AI service.' });
+
+        // Step 3: Parse the document content into AST
+        const processor = unified()
+          .use(remarkParse);
+        const tree = processor.parse(markdownContent);
+        logger.debug('Parsed document content into AST', { tree });
+
+        // Step 4: Apply the operations to the AST
+        specialResults = await applyOperations(tree, operations.operations, yamlConfig, requestId);
+        logger.debug('Applied operations to AST', { requestId });
+
+        // Step 5: Serialize the modified AST back to Markdown
+        const serializer = unified()
+          .use(remarkStringify);
+        modifiedContent = serializer.stringify(tree);
+        logger.debug('Serialized modified AST back to Markdown', { requestId });
       }
-
-      // Step 3: Parse the document content into AST
-      const processor = unified()
-        .use(remarkParse);
-      const tree = processor.parse(markdownContent);
-      logger.debug('Parsed document content into AST', { tree });
-
-      // Step 4: Apply the operations to the AST
-      const specialResults = await applyOperations(tree, operations.operations, yamlConfig, requestId);
-      logger.debug('Applied operations to AST', { requestId });
-
-      // Step 5: Serialize the modified AST back to Markdown
-      const serializer = unified()
-        .use(remarkStringify);
-      let modifiedContent = serializer.stringify(tree);
-      logger.debug('Serialized modified AST back to Markdown', { requestId });
 
       // Step 6: Reattach YAML front matter as HTML comments if it was present
       if (Object.keys(yamlConfig).length > 0) {

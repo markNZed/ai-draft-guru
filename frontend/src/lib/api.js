@@ -17,11 +17,11 @@ const apiClient = axios.create({
  * @param {string} documentContent - The current Markdown content.
  * @returns {object} - The response data from the backend.
  */
-export const applyCommand = async (command, documentContent) => {
+export const applyCommand = async (command, documentContent, typeToSend) => {
   try {
     const response = await apiClient.post(
       '/apply-command',
-      { command, documentContent },
+      { command, documentContent, type:typeToSend },
       {
         responseType: 'blob', // Use 'blob' to handle binary data
       }

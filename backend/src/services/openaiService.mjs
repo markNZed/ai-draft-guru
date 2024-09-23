@@ -68,7 +68,7 @@ export const createChatCompletion = async (messages, requestId) => {
   try {
     logger.info('Cache miss. Sending request to OpenAI API.', { requestId });
     const chatCompletion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o", //"gpt-4o-mini",
       messages,
       max_tokens: 500,
       temperature: 0, // Set to 0 for more deterministic output
