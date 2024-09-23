@@ -39,6 +39,7 @@ export const applyCommand = async (command, documentContent) => {
         reader.readAsText(response.data);
       });
       const data = JSON.parse(text);
+      data.isJSON = true;
       return data;
     } else {
       return response;

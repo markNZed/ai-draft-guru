@@ -19,10 +19,16 @@ export const emphasizeText = (tree, parameters, requestId) => {
   const wordRegex = new RegExp(`\\b${text}\\b`, 'g');
 
   visit(tree, (node, index, parent) => {
-    // If a specific line number is provided, only emphasize text on that line
-    if (lineNumber && node.position && node.position.start.line !== lineNumber) {
-      logger.debug(`Skipping node line ${node.position.start.line} not target line ${lineNumber}: ${node.value}`, { requestId });
-      return;
+    // Only process nodes with position information
+    if (!node.position) return;
+
+    // Determine if we should process this node based on lineNumber
+    if (lineNumber) {
+      const { start, end } = node.position;
+      if (lineNumber < start.line || lineNumber > end.line) {
+        logger.debug(`Skipping node lines ${start.line}-${end.line}, not target line ${lineNumber}: ${node.value}`, { requestId });
+        return;
+      }
     }
 
     // Check for text nodes and apply emphasis
@@ -35,47 +41,113 @@ export const emphasizeText = (tree, parameters, requestId) => {
         return;
       }
 
-      let startIndex = 0;
-      const newNodes = [];
+      if (!lineNumber) {
+        // No lineNumber specified, process entire node
+        let match;
+        const newNodes = [];
+        let lastIndex = 0;
 
-      while (startIndex < nodeValue.length) {
-        // Find the next match using the regular expression for word boundaries
-        const match = wordRegex.exec(nodeValue.slice(startIndex));
-        if (!match) {
+        while ((match = wordRegex.exec(nodeValue)) !== null) {
+          const matchStart = match.index;
+          const matchEnd = wordRegex.lastIndex;
+
+          if (matchStart > lastIndex) {
+            newNodes.push({
+              type: 'text',
+              value: nodeValue.slice(lastIndex, matchStart),
+            });
+          }
+
           newNodes.push({
-            type: 'text',
-            value: nodeValue.slice(startIndex),
+            type: 'strong',
+            children: [{ type: 'text', value: match[0] }],
           });
-          break;
+
+          lastIndex = matchEnd;
         }
 
-        const matchIndex = startIndex + match.index;
-
-        if (matchIndex > startIndex) {
+        if (lastIndex < nodeValue.length) {
           newNodes.push({
             type: 'text',
-            value: nodeValue.slice(startIndex, matchIndex),
+            value: nodeValue.slice(lastIndex),
           });
         }
 
-        // Wrap the matched text in a strong (bold) node
-        newNodes.push({
-          type: 'strong',
-          children: [{ type: 'text', value: match[0] }],
-        });
+        if (newNodes.length > 0) {
+          logger.debug(`Replacing original node with emphasized text`, { requestId, newNodes });
 
-        startIndex = matchIndex + match[0].length;
-      }
+          parent.children.splice(index, 1, ...newNodes);
 
-      // Replace the original node with the new nodes
-      if (newNodes.length > 0) {
-        logger.debug(`Replacing original node with emphasized text`, { requestId, newNodes });
+          // Return `SKIP` to prevent further traversal into newly added nodes
+          return [visit.SKIP];
+        }
+      } else {
+        // lineNumber is specified, process only the part of the node on that line
+        const { start, end } = node.position;
 
-        // Replace the node and stop further traversal for this parent node
-        parent.children.splice(index, 1, ...newNodes);
+        // Calculate the number of characters per line
+        const lines = nodeValue.split('\n');
+        if (lineNumber < start.line || lineNumber > end.line) {
+          // Already handled above, but just in case
+          return;
+        }
 
-        // Return `SKIP` to prevent further traversal into newly added nodes
-        return [visit.SKIP];
+        // Determine which line within the node corresponds to the target lineNumber
+        const targetLineIndex = lineNumber - start.line;
+        if (targetLineIndex < 0 || targetLineIndex >= lines.length) {
+          // Line number out of bounds
+          return;
+        }
+
+        const targetLine = lines[targetLineIndex];
+        const targetLineStartChar = lines.slice(0, targetLineIndex).reduce((acc, line) => acc + line.length + 1, 0); // +1 for '\n'
+        const targetLineEndChar = targetLineStartChar + targetLine.length;
+
+        // Find matches within the target line
+        const matches = [];
+        let match;
+        while ((match = wordRegex.exec(targetLine)) !== null) {
+          matches.push({ index: match.index + targetLineStartChar, match: match[0] });
+        }
+
+        if (matches.length === 0) return;
+
+        const newNodes = [];
+        let lastIndex = 0;
+
+        for (const { index: matchIndex, match: matchText } of matches) {
+          const relativeMatchIndex = matchIndex - targetLineStartChar;
+
+          if (matchIndex > lastIndex) {
+            newNodes.push({
+              type: 'text',
+              value: nodeValue.slice(lastIndex, matchIndex),
+            });
+          }
+
+          newNodes.push({
+            type: 'strong',
+            children: [{ type: 'text', value: matchText }],
+          });
+
+          lastIndex = matchIndex + matchText.length;
+        }
+
+        if (lastIndex < nodeValue.length) {
+          newNodes.push({
+            type: 'text',
+            value: nodeValue.slice(lastIndex),
+          });
+        }
+
+        if (newNodes.length > 0) {
+          logger.debug(`Replacing original node with emphasized text on line ${lineNumber}`, { requestId, newNodes });
+
+          parent.children.splice(index, 1, ...newNodes);
+
+          // Return `SKIP` to prevent further traversal into newly added nodes
+          return [visit.SKIP];
+        }
       }
     }
   });

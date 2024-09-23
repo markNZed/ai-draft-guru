@@ -52,13 +52,15 @@ export const createChatCompletion = async (messages, requestId) => {
   if (!openai) {
     throw new Error('OpenAI API key is missing.');
   } 
+  logger.info('OpenAI API request.', { requestId, messages: messages[messages.length - 1].content });
+  
 
   const cacheKey = generateCacheKey(messages);
 
   // Check if the response is in the cache
   if (cache.has(cacheKey)) {
     const cachedResponse = cache.get(cacheKey);
-    logger.info('Cache hit for OpenAI API request.', { requestId });
+    logger.info('Cache hit for OpenAI API response.', { requestId, cachedResponse });
     return cachedResponse;
   }
 
@@ -75,7 +77,7 @@ export const createChatCompletion = async (messages, requestId) => {
 
     // Store the response in the cache
     cache.set(cacheKey, responseContent);
-    logger.info('Received and cached response from OpenAI API.', { requestId });
+    logger.info('Received and cached response from OpenAI API.', { requestId, responseContent });
     return responseContent;
   } catch (error) {
     logger.error('Error communicating with OpenAI API', {

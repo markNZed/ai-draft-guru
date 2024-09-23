@@ -207,13 +207,16 @@ const Index = () => {
     try {
       const response = await applyCommand(command, currentContent);
 
-      // Handle modified content if present
-      if (response.modifiedContent) {
-        setProposedContent(response.modifiedContent);
-        setCommandHistory(prevHistory => [...prevHistory, command]);
-        // Add a new version with the associated command
-        addNewVersion(response.modifiedContent, command);
-        setCommand('');
+      if (response.isJSON) {
+        // Handle modified content if present
+        if (response.modifiedContent) {
+          setProposedContent(response.modifiedContent);
+          setCommandHistory(prevHistory => [...prevHistory, command]);
+          // Add a new version with the associated command
+          addNewVersion(response.modifiedContent, command);
+          setCommand('');
+        }
+        return;
       }
 
       // Handle MP3 file if present
