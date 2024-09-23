@@ -124,35 +124,41 @@ const Index = () => {
 
   // Function to handle template selection
   const handleTemplateChange = async (e) => {
-    const templateName = e.target.value;
-    setSelectedTemplate(templateName);
+    fetchTemplate(e.target.value);
+  }
 
+  const fetchTemplate = async (templateName) => {
+  
+    // Always fetch the template, even if the same one is selected
     const templateContent = await fetchMarkdownTemplate(templateName);
     if (templateContent === null) {
       return; // Do not proceed if fetching failed
     }
-
+  
     // Push the current content to the undo stack before loading a new template
     setUndoStack((prevUndo) => {
       const updatedUndo = [...prevUndo, markdownContentRef.current];
       saveUndoStack(updatedUndo);
       return updatedUndo;
     });
-
+  
     // Update the editor with the new template content
     markdownContentRef.current = templateContent;
     setCurrentContent(templateContent);
     const easyMDE = getEasyMDEInstance();
     if (easyMDE) {
-      easyMDE.value(templateContent);
+      easyMDE.value(templateContent); // Ensure the editor content is updated
     }
-
+  
     setProposedContent(null);
-
+  
     // Add a new version with the template loading action
     addNewVersion(templateContent, `Loaded template: ${templateName}`);
-
-    toast.success(`Template "${templateName}" loaded successfully!`);
+  
+    toast.success(`Template "${templateName}" reloaded successfully!`);
+  
+    // Update the selected template after reloading
+    setSelectedTemplate(templateName);
   };
 
   // Function to load versions from localStorage
@@ -507,28 +513,45 @@ const Index = () => {
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
 
       {/* Dropdown to select templates */}
-      <div className="mb-4">
-        <label htmlFor="template-select" className="block mb-2 font-semibold">
-          Choose Template:
-        </label>
-        <select
-          id="template-select"
-          value={selectedTemplate}
-          onChange={handleTemplateChange}
-          className="w-full p-2 border rounded"
-          disabled={isLoading || availableTemplates.length === 0}
-        >
-          {availableTemplates.length === 0 ? (
-            <option>No templates available.</option>
-          ) : (
-            availableTemplates.map((template) => (
-              <option key={template.value} value={template.value}>
-                {template.label}
-              </option>
-            ))
-          )}
-        </select>
-      </div>
+      {!proposedContent ? (
+        <div className="mb-4 flex items-center space-x-4">
+          {/* Label */}
+          <label htmlFor="template-select" className="font-semibold">
+            Choose Template:
+          </label>
+
+          {/* Select Dropdown */}
+          <select
+            id="template-select"
+            value={selectedTemplate}
+            onChange={handleTemplateChange}
+            className="p-2 border rounded flex-1"
+            disabled={isLoading || availableTemplates.length === 0}
+          >
+            {availableTemplates.length === 0 ? (
+              <option>No templates available.</option>
+            ) : (
+              availableTemplates.map((template) => (
+                <option key={template.value} value={template.value}>
+                  {template.label}
+                </option>
+              ))
+            )}
+          </select>
+
+          {/* Reload Button */}
+          <Button
+            onClick={() => fetchTemplate(selectedTemplate)}
+            disabled={isLoading || !selectedTemplate}
+            className="sm:w-auto"
+          >
+            {isLoading ? 'Reloading..selectedTemplate.' : 'Reload Template'}
+          </Button>
+        </div>
+      ) : (
+        <div>
+        </div>
+      )}
 
       {/* Conditional Rendering Based on proposedContent */}
       {!proposedContent ? (

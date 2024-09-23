@@ -1,6 +1,8 @@
 Allow for iteraction over parts of the document e.g. for each section ...
 Project folder with multiple documents (can be loaded for context)
+Returning errors from OpenAI e.g. TTS voice missing to UI
 Test all operations
+Invert the command history
 Generate a name for the file that fits the script
 Generate sound effects
 Generate music intro/outro

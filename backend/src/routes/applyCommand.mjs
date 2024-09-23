@@ -124,7 +124,14 @@ router.post(
 
         // Step 5: Serialize the modified AST back to Markdown
         const serializer = unified()
-          .use(remarkStringify);
+          .use(remarkStringify, {
+            handlers: {
+              text(node) {
+                // Return the value as-is without escaping backslashes
+                return node.value.replace(/\\\[/g, '[').replace(/\\\]/g, ']');
+              },
+            },
+          });
         modifiedContent = serializer.stringify(tree);
         logger.debug('Serialized modified AST back to Markdown', { requestId });
       }
