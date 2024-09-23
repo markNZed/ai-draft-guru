@@ -1,4 +1,30 @@
-Allow for iteraction over parts of the document e.g. for each section ...
+Add help for script type
+Commadn to generate a script - where does it get displayed ? In the script textbox (will wipe it out for now - need seprate boxs)
+Syntax highlighting etc in Script textbox. Use CodeMirror.
+With Developer Tools open we can use debugger to see script
+Use full width s owe get larger command area
+Saving of prompts
+Help for predefined - generated
+Parallel exceution of TTS conversion
+Add example to README:
+// Traverse the AST and process paragraphs
+for (let node of ast.children) {
+  if (node.type === 'paragraph') {
+    // Convert the paragraph node back to markdown
+    const paragraphMarkdown = remark().stringify(node);
+
+    // Send a command to count the number of letters in the paragraph
+    const charCount = await sendCommand('Count the number of letters and return only the count', paragraphMarkdown);
+
+    // Update the paragraph node by appending the character count to the text
+    node.children.push({
+      type: 'text',
+      value: ` (Character count: ${charCount})`,
+    });
+  }
+}
+
+
 Project folder with multiple documents (can be loaded for context)
 Returning errors from OpenAI e.g. TTS voice missing to UI
 Test all operations

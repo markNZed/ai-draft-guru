@@ -12,6 +12,8 @@ import { Diff, Hunk, parseDiff } from 'react-diff-view'; // Ensure react-diff-vi
 import 'react-diff-view/style/index.css'; // Import react-diff-view styles
 import { diffLines, formatLines } from 'unidiff'; // Import unidiff
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Adjust the path as needed
+import { remark } from 'remark';
+import remarkStringify from 'remark-stringify';
 
 // Define the fetchMarkdownTemplate function
 const fetchMarkdownTemplate = async (templateName = 'default') => { // Accept a templateName parameter with 'default' as fallback
@@ -81,6 +83,20 @@ const Index = () => {
   const [availableTemplates, setAvailableTemplates] = useState([]); // New state for template list
 
   const [commandType, setCommandType] = useState('predefined'); // 'predefined' or 'free-form'
+
+  const [ast, setAST] = useState(null); // State to track the parsed AST
+
+  // Function to parse markdown to AST using Remark
+  const parseMarkdownToAST = (markdown) => {
+    const parsedAST = remark().parse(markdown);
+    setAST(parsedAST);
+    return parsedAST;
+  };
+
+  // Function to stringify AST back to markdown
+  const stringifyASTToMarkdown = (ast) => {
+    return remark().use(remarkStringify).stringify(ast);
+  };
 
 
   // Define available templates (initially empty)
@@ -279,6 +295,21 @@ const Index = () => {
     saveVersions(updatedVersions);
   };
 
+  const sendCommand = async (command, content) => {
+    try {
+      const response = await applyCommand(command, content, 'script');
+      if (response.isJSON && response.modifiedContent) {
+        return response.modifiedContent;
+      } else {
+        throw new Error('Invalid response from AI');
+      }
+    } catch (error) {
+      console.error('Error in sendCommand:', error);
+      toast.error(`AI command failed: ${error.message}`);
+      throw error; // Propagate the error to the caller
+    }
+  };
+
   const applyChanges = async () => {
     let typeToSend = '';
 
@@ -289,6 +320,83 @@ const Index = () => {
 
     setIsLoading(true);
 
+    if (commandType === 'script') {
+      try {
+        let userFunction;
+    
+        // Inner try-catch to handle syntax errors during Function creation
+        // This example script removes all heading elements from the markdown content.
+        //ast.children = ast.children.filter(node => node.type !== 'heading');
+
+        try {
+          // Create an async function with 'ast' and 'sendCommand' as parameters
+          userFunction = new Function(
+            'ast', 
+            'sendCommand', 
+            'remark',
+            'remarkStringify',
+            `
+              return (async () => {
+                ${command}
+              })();
+            `);
+        } catch (syntaxError) {
+          console.error('Syntax Error:', syntaxError);
+          toast.error('Syntax error in script.', {
+            style: { backgroundColor: 'red', color: 'white' },
+          });
+          setIsLoading(false);
+          return;  // Exit early if there's a syntax error
+        }
+    
+        // Outer try-catch to handle runtime errors during Function execution
+        let updatedAST;
+        try {
+          updatedAST = await userFunction(ast, sendCommand, remark, remarkStringify);
+          toast.success('Script executed successfully!');
+          console.log('Script updatedAST:', updatedAST);
+        } catch (executionError) {
+          console.error('Error executing script:', executionError);
+          toast.error('Error executing script.', {
+            style: { backgroundColor: 'red', color: 'white' },
+          });
+        }
+
+        // Validate the updated AST
+        if (!updatedAST || typeof updatedAST !== 'object') {
+          console.log('Script did not return a valid AST.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Convert the updated AST back to markdown
+        const updatedMarkdown = stringifyASTToMarkdown(updatedAST);
+
+        // Update the editor's content with the new markdown
+        markdownContentRef.current = updatedMarkdown;
+        setCurrentContent(updatedMarkdown);
+        const easyMDE = getEasyMDEInstance();
+        if (easyMDE) {
+          easyMDE.value(updatedMarkdown); // Update the editor's content
+        }
+
+        // Add the new version
+        addNewVersion(updatedMarkdown, 'Script applied');
+
+        toast.success('Script executed successfully!');
+        console.log('Updated Markdown:', updatedMarkdown);
+    
+      } catch (unexpectedError) {
+        // Catch any other unexpected errors
+        console.error('Unexpected Error:', unexpectedError);
+        toast.error('An unexpected error occurred.');
+      } finally {
+        setIsLoading(false);  // Ensure loading state is reset
+      }
+    
+      return;
+    }
+    
     try {
       const response = await applyCommand(command, currentContent, commandType);
 
@@ -410,6 +518,14 @@ const Index = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proposedContent]); // Re-run when proposedContent changes
+
+  useEffect(() => {
+    if (currentContent) {
+      // Parse the initial content into an AST
+      const parsedAST = parseMarkdownToAST(currentContent);
+      console.log("parsedAST", parsedAST);
+    }
+  }, [currentContent]);
 
   const rejectChanges = () => {
     setProposedContent(null); // Reset proposedContent to return to editor view
@@ -582,13 +698,17 @@ const Index = () => {
                       <RadioGroupItem value="free-form" id="free-form" />
                       <label htmlFor="free-form">Free Form</label>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="script" id="script" />
+                      <label htmlFor="script">Script</label>
+                    </div>
                   </RadioGroup>
                 </div>
                 <Textarea
                   placeholder="Enter your command here..."
                   value={command}
                   onChange={handleCommandChange}
-                  onKeyDown={handleKeyDown}
+                  //onKeyDown={handleKeyDown}
                   className="mb-4"
                   disabled={isLoading}
                 />

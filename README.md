@@ -16,29 +16,36 @@ In addition, the application allows users to **convert Markdown documents into M
    - A rich text editor based on EasyMDE for writing and editing Markdown content.
    - Toolbar options for common Markdown formatting such as headings, bold, italics, and lists.
    - Markdown features like code blocks, bullet points, and tables are fully supported.
+  
+2. **Document Templates**:
+   - Users can select from a variety of document templates.
 
-2. **AI-Assisted Editing**:
-   - The user inputs natural language commands to modify the document. For example, "Bold all headings" or "Insert a summary at the end of the document."
+3. **AI-Assisted Editing**:
+   - The user selects either Predefined or Free Form commands.
+     - Predefined commands limit the AI to using functions provided by the software
+     - Free Form commands operate on the document and the AI returns the complete document.
+   - The user inputs natural language commands to modify the document. 
+     - For example, "Bold all headings" or "Insert a summary at the end of the document."
    - After applying the command, the AI processes the document and returns an updated version.
    - The modified document can be reviewed and approved before changes are saved.
 
-3. **Change Review and Approval**:
+4. **Change Review and Approval**:
    - The AI highlights proposed changes, allowing users to review and approve or reject them before applying.
    - Users can track changes through a diff view to ensure accuracy.
 
-4. **Version Control & Undo**:
+5. **Version Control & Undo**:
    - Automatic version tracking enables users to review document history and revert to previous versions.
    - An undo feature lets users roll back changes applied to the document.
 
-5. **MP3 Conversion**:
+6. **MP3 Conversion**:
    - The application can convert Markdown content into MP3 format using AI-powered Text-to-Speech (TTS).
    - You can specify different voices for different speakers within the Markdown document using a predefined YAML speaker map.
 
-6. **DOCX Export**:
+7. **DOCX Export**:
    - Users can export their Markdown document to a Microsoft Word (DOCX) file.
    - The conversion process maintains the structure of the Markdown, ensuring that headings, lists, and other elements are preserved in the Word document.
 
-7. **Dummy Mode**:
+8. **Dummy Mode**:
    - If no OpenAI API key is available, the system operates in "dummy mode," providing a simulated response for testing and demo purposes without real AI integration.
 
 ---
