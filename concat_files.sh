@@ -5,20 +5,27 @@
 # Description: Concatenates all useful project files into a single file,
 #              excluding specified directories, files, file patterns (e.g., '*.svg'),
 #              and binary files.
-# Usage: ./combine_files.sh [output_file.txt]
+# Usage: ./combine_files.sh [directory] [output_file.txt]
+# If no directory is specified, defaults to the current directory.
 # If no output file is specified, defaults to 'combined_file.txt'.
 # ============================================================
 
 # ---------------------
-# 1. Setup Output File
+# 1. Setup Input Directory and Output File
 # ---------------------
 
-# Default output file name
-output_file="combined_file.txt"
+# Default directory and output file name
+input_directory="."
+output_file="concat_files.txt"
 
-# If an output file is provided as an argument, use it
+# If a directory is provided as the first argument, use it
 if [ "$1" ]; then
-  output_file="$1"
+  input_directory="$1"
+fi
+
+# If an output file is provided as the second argument, use it
+if [ "$2" ]; then
+  output_file="$2"
 fi
 
 # Clear the output file if it already exists
@@ -34,6 +41,7 @@ excluded_dirs=(
   ".git"
   "node_modules"
   "frontend/src/components/ui"
+  "src/components/ui"
   "dead"
   "tts-cache"
 )
@@ -63,7 +71,7 @@ excluded_patterns=(
 # -------------------------------
 
 # Initialize the find command as an array
-find_command=(find .)
+find_command=(find "$input_directory")
 
 # Begin grouping excluded directories
 find_command+=("(")
@@ -72,7 +80,7 @@ find_command+=("(")
 for dir in "${excluded_dirs[@]}"; do
   if [[ "$dir" == */* ]]; then
     # If the directory contains a slash, treat it as a specific path
-    find_command+=("-path" "./$dir" "-o")
+    find_command+=("-path" "$input_directory/$dir" "-o")
   else
     # Otherwise, treat it as a directory name to exclude anywhere
     find_command+=("-name" "$dir" "-o")
