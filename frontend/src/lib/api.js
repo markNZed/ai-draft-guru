@@ -30,7 +30,7 @@ export const applyCommand = async (command, documentContent) => {
     // Get the content type from headers
     const contentType = response.headers['content-type'];
 
-    if (contentType === 'application/json') {
+    if (contentType.includes('application/json')) {
       // If response is JSON, parse it
       const reader = new FileReader();
       const text = await new Promise((resolve, reject) => {

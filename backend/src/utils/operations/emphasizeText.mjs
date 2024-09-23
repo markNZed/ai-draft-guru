@@ -21,7 +21,7 @@ export const emphasizeText = (tree, parameters, requestId) => {
   visit(tree, (node, index, parent) => {
     // If a specific line number is provided, only emphasize text on that line
     if (lineNumber && node.position && node.position.start.line !== lineNumber) {
-      //logger.debug(`Skipping node line ${node.position.start.line} not target line ${lineNumber}: ${node.value}`, { requestId });
+      logger.debug(`Skipping node line ${node.position.start.line} not target line ${lineNumber}: ${node.value}`, { requestId });
       return;
     }
 
@@ -69,8 +69,13 @@ export const emphasizeText = (tree, parameters, requestId) => {
 
       // Replace the original node with the new nodes
       if (newNodes.length > 0) {
-        logger.debug(`Replacing original node with emphasized text`, { requestId });
+        logger.debug(`Replacing original node with emphasized text`, { requestId, newNodes });
+
+        // Replace the node and stop further traversal for this parent node
         parent.children.splice(index, 1, ...newNodes);
+
+        // Return `SKIP` to prevent further traversal into newly added nodes
+        return [visit.SKIP];
       }
     }
   });

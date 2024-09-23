@@ -207,9 +207,18 @@ const Index = () => {
     try {
       const response = await applyCommand(command, currentContent);
 
+      // Handle modified content if present
+      if (response.modifiedContent) {
+        setProposedContent(response.modifiedContent);
+        setCommandHistory(prevHistory => [...prevHistory, command]);
+        // Add a new version with the associated command
+        addNewVersion(response.modifiedContent, command);
+        setCommand('');
+      }
+
       // Handle MP3 file if present
       const contentType = response.headers.get('Content-Type');
-      if (contentType === 'audio/mpeg') {
+      if (contentType.includes('audio/mpeg')) {
         // Extract filename from headers if available
         const disposition = response.headers.get('Content-Disposition');
         let filename = 'document.mp3';
@@ -249,14 +258,6 @@ const Index = () => {
         toast.success('Markdown document has been converted to .docx and downloaded.');
       }
 
-      // Handle modified content if present
-      if (response.modifiedContent) {
-        setProposedContent(response.modifiedContent);
-        setCommandHistory(prevHistory => [...prevHistory, command]);
-        // Add a new version with the associated command
-        addNewVersion(response.modifiedContent, command);
-        setCommand('');
-      }
     } catch (error) {
       console.error('Error applying changes:', error);
       toast.error(`Error applying changes: ${error.message}`);

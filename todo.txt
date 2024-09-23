@@ -1,4 +1,6 @@
-Chose template and load
+Test operations
+Choose template and load
+Project folder with multiple documents (can be loaded for context)
 Generate a name for the file that fits the script
 Generate sound effects
 Generate music intro/outro

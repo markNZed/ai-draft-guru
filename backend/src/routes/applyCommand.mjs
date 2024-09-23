@@ -103,7 +103,7 @@ router.post(
           .json({ message: 'Invalid response format from AI service.' });
       }
 
-      // Step 3: Parse the document content into AST with row markers
+      // Step 3: Parse the document content into AST
       const processor = unified()
         .use(remarkParse);
       const tree = processor.parse(markdownContent);
