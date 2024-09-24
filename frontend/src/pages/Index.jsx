@@ -18,7 +18,6 @@ import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark'; // Import the oneDark theme
 import { basicSetup } from 'codemirror';
 
-
 // Define the fetchMarkdownTemplate function
 const fetchMarkdownTemplate = async (templateName = 'default') => { // Accept a templateName parameter with 'default' as fallback
   try {
@@ -70,7 +69,13 @@ const renderDiff = (current, proposed) => {
 };
 
 const Index = () => {
-  const [command, setCommand] = useState('');
+  // Separate state variables for each command type
+  const [predefinedCommand, setPredefinedCommand] = useState('');
+  const [freeFormCommand, setFreeFormCommand] = useState('');
+  const [scriptCommand, setScriptCommand] = useState('');
+  const [scriptGenCommand, setScriptGenCommand] = useState('');
+
+  const [activeCommandType, setActiveCommandType] = useState('predefined'); // Track active tab
   const [isLoading, setIsLoading] = useState(false);
   const [commandHistory, setCommandHistory] = useState([]);
   const [proposedContent, setProposedContent] = useState(null); // State to track proposed changes
@@ -86,14 +91,9 @@ const Index = () => {
   const [selectedTemplate, setSelectedTemplate] = useState('default'); // New state for selected template
   const [availableTemplates, setAvailableTemplates] = useState([]); // New state for template list
 
-  const [commandType, setCommandType] = useState('predefined'); // 'predefined' or 'free-form'
-
   const [ast, setAST] = useState(null); // State to track the parsed AST
 
   const scriptTextareaRef = useRef(null); // Ref for the script Textarea
-
-  const scriptEditorRef = useRef(null); // Ref for CodeMirror container
-  const editorViewRef = useRef(null); // Ref to store CodeMirror instance
 
   // Initialize CodeMirror extensions
   const extensions = [
@@ -114,15 +114,6 @@ const Index = () => {
   const stringifyASTToMarkdown = (ast) => {
     return remark().use(remarkStringify).stringify(ast);
   };
-
-
-  // Define available templates (initially empty)
-  // const availableTemplates = [
-  //   { label: 'Default', value: 'default' },
-  //   { label: 'Small', value: 'small' },
-  //   { label: 'Podcast Small', value: 'podcast_small' },
-  //   // Add more templates here if needed
-  // ];
 
   // Function to fetch the list of available templates
   const fetchAvailableTemplates = async () => {
@@ -152,8 +143,6 @@ const Index = () => {
     fetchAvailableTemplates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ... existing useEffect and other functions
 
   // Function to handle template selection
   const handleTemplateChange = async (e) => {
@@ -281,8 +270,6 @@ const Index = () => {
 
           markdownContentRef.current = newValue;
           setCurrentContent(newValue);
-          // Add a new version with a default command since no specific command was provided
-          addNewVersion(newValue, 'Manual edit');
         });
         easyMDE.isChangeHandlerSet = true; // Custom flag to prevent multiple handlers
       }
@@ -328,22 +315,59 @@ const Index = () => {
   };
 
   const applyChanges = async () => {
-    let typeToSend = '';
+    let commandToSend = '';
+    let currentType = activeCommandType;
 
-    if (!command) {
+    // Determine which command to send based on active tab
+    switch (activeCommandType) {
+      case 'predefined':
+        if (!predefinedCommand.trim()) {
+          toast.error('Please enter a predefined command.');
+          return;
+        }
+        commandToSend = predefinedCommand;
+        break;
+      case 'free-form':
+        if (!freeFormCommand.trim()) {
+          toast.error('Please enter free-form instructions.');
+          return;
+        }
+        commandToSend = freeFormCommand;
+        break;
+      case 'script':
+        if (!scriptCommand.trim()) {
+          toast.error('Please enter a script.');
+          return;
+        }
+        commandToSend = scriptCommand;
+        break;
+      case 'script-gen':
+        if (!scriptGenCommand.trim()) {
+          toast.error('Please enter a script generation command.');
+          return;
+        }
+        commandToSend = scriptGenCommand;
+        break;
+      default:
+        toast.error('Invalid command type.');
+        return;
+    }
+
+
+    if (!commandToSend) {
       toast.error('Please select a command.');
       return;
     }
 
     setIsLoading(true);
 
-    if (commandType === 'script-gen') {
+    if (activeCommandType === 'script-gen') {
       try {
-        const response = await applyCommand(command, currentContent, 'script-gen');
+        const response = await applyCommand(commandToSend, currentContent, 'script-gen');
         if (response.isJSON && response.modifiedContent) {
-          setCommand(response.modifiedContent);
-          setCommandHistory(prevHistory => [...prevHistory, command]);
-          setCommandType('script'); // Switch to script tab
+          setScriptCommand(response.modifiedContent);
+          setCommandHistory(prevHistory => [...prevHistory, { command: commandToSend, type: currentType }]);
+          setActiveCommandType('script'); // Switch to script tab
           scriptTextareaRef.current?.focus(); // Focus on the script Textarea
         } else {
           console.log('Invalid response from AI', response);
@@ -358,7 +382,7 @@ const Index = () => {
       }
     }
 
-    if (commandType === 'script') {
+    if (activeCommandType === 'script') {
       try {
         let userFunction;
     
@@ -375,7 +399,7 @@ const Index = () => {
             'remarkStringify',
             `
               return (async () => {
-                ${command}
+                ${commandToSend}
               })();
             `);
         } catch (syntaxError) {
@@ -430,16 +454,15 @@ const Index = () => {
     }
     
     try {
-      const response = await applyCommand(command, currentContent, commandType);
+      const response = await applyCommand(commandToSend, currentContent, currentType);
 
       if (response.isJSON) {
         // Handle modified content if present
         if (response.modifiedContent) {
           setProposedContent(response.modifiedContent);
-          setCommandHistory(prevHistory => [...prevHistory, command]);
+          setCommandHistory(prevHistory => [...prevHistory, { command: commandToSend, type: currentType }]);
           // Add a new version with the associated command
-          addNewVersion(response.modifiedContent, command);
-          setCommand('');
+          addNewVersion(response.modifiedContent, commandToSend);
         }
         return;
       }
@@ -573,10 +596,30 @@ const Index = () => {
     }
   };
 
-  const reapplyCommand = (oldCommand) => {
-    setCommand(oldCommand);
-    applyChanges();
+  const reapplyCommand = (oldCommandObj) => {
+    const { command, type } = oldCommandObj;
+  
+    // Set the command in the correct state based on the type
+    switch (type) {
+      case 'predefined':
+        setPredefinedCommand(command);
+        break;
+      case 'free-form':
+        setFreeFormCommand(command);
+        break;
+      case 'script':
+        setScriptCommand(command);
+        break;
+      case 'script-gen':
+        setScriptGenCommand(command);
+        break;
+      default:
+        console.error('Unknown command type:', type);
+        return;
+    }
+  
   };
+  
 
   // Function to clear local storage and reset the editor content
   const clearLocalStorage = async () => {
@@ -693,7 +736,7 @@ const Index = () => {
             disabled={isLoading || !selectedTemplate}
             className="sm:w-auto"
           >
-            {isLoading ? 'Reloading..selectedTemplate.' : 'Reload Template'}
+            {isLoading ? 'Reloading template...' : 'Reload Template'}
           </Button>
         </div>
       ) : (
@@ -713,7 +756,7 @@ const Index = () => {
 
           {/* Command and History Section */}
           <div className="w-full md:w-1/3">
-            <Tabs value={commandType} onValueChange={(value) => setCommandType(value)}>
+            <Tabs value={activeCommandType} onValueChange={(value) => setActiveCommandType(value)}>
               {/* Tabs for Command Types */}
                 <TabsList className="mb-4">
                   <TabsTrigger value="predefined">Predefined</TabsTrigger>
@@ -726,8 +769,8 @@ const Index = () => {
                 <TabsContent value="predefined">
                   <Textarea
                     placeholder="Enter a predefined command..."
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
+                    value={predefinedCommand}
+                    onChange={(e) => setPredefinedCommand(e.target.value)}
                     className="mb-4"
                     disabled={isLoading}
                   />
@@ -737,8 +780,8 @@ const Index = () => {
                 <TabsContent value="free-form">
                   <Textarea
                     placeholder="Enter free-form instructions..."
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
+                    value={freeFormCommand}
+                    onChange={(e) => setFreeFormCommand(e.target.value)}
                     className="mb-4"
                     disabled={isLoading}
                   />
@@ -748,10 +791,10 @@ const Index = () => {
                 <TabsContent value="script">
                   {/* Replace textarea with CodeMirror */}
                   <CodeMirror
-                    value={command}
+                    value={scriptCommand}
                     height="400px" // Adjust height as needed
                     extensions={extensions}
-                    onChange={(value) => setCommand(value)}
+                    onChange={(value) => setScriptCommand(value)}
                     theme="dark" // Use "dark" theme if desired
                     className="mb-4 border border-gray-200 rounded" // Optional styling
                     // Optional: Add additional props as needed
@@ -762,8 +805,8 @@ const Index = () => {
                 <TabsContent value="script-gen">
                   <Textarea
                     placeholder="Generate script using AI..."
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
+                    value={scriptGenCommand}
+                    onChange={(e) => setScriptGenCommand(e.target.value)}
                     className="mb-4"
                     disabled={isLoading}
                   />
@@ -777,13 +820,13 @@ const Index = () => {
                   <div className="mt-4">
                     <h3 className="font-semibold mb-2">Command History:</h3>
                     <ul className="list-disc pl-5">
-                      {[...commandHistory].reverse().map((cmd, index) => (
+                      {[...commandHistory].reverse().map((cmdObj, index) => (
                         <li key={index} className="mb-1">
                           <button
-                            onClick={() => reapplyCommand(cmd)}
+                            onClick={() => reapplyCommand(cmdObj)}
                             className="text-blue-500 hover:underline"
                           >
-                            {cmd}
+                            {cmdObj.command} ({cmdObj.type}) {/* Display the command and its type */}
                           </button>
                         </li>
                       ))}

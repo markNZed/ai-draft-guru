@@ -1,4 +1,6 @@
 Add help for script type
+Spacing in defaul ttemplate moves after 
+Generate tab is having command replacd by script
 Show script result in diff view too
 Can we import libraries into th efunction? Can also return instead of await
    await import('https://cdn.jsdelivr.net/npm/lodash-es/lodash.js')
