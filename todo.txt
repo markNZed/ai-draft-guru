@@ -1,6 +1,6 @@
 Add help for script type
-Spacing in defaul ttemplate moves after 
-Generate tab is having command replacd by script
+Error No hunks found in the parsed diff. 
+Command history not restoring correctly
 Show script result in diff view too
 Can we import libraries into th efunction? Can also return instead of await
    await import('https://cdn.jsdelivr.net/npm/lodash-es/lodash.js')

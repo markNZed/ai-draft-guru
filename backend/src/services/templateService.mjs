@@ -96,6 +96,7 @@ export const getProcessedTemplate = async (requestId, name) => {
     // Serialize the modified AST back to Markdown
     // Needed cusotm escaping to avoid double escaping then [...] would appear as \[...] in the Markdown editor
     const serializer = unified().use(remarkStringify, {
+      listItemIndent: '1',
       handlers: {
         text(node) {
           // Return the value as-is without escaping backslashes

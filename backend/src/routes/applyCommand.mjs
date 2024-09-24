@@ -124,6 +124,7 @@ router.post(
         // Step 5: Serialize the modified AST back to Markdown
         const serializer = unified()
           .use(remarkStringify, {
+            listItemIndent: '1',
             handlers: {
               text(node) {
                 // Return the value as-is without escaping backslashes

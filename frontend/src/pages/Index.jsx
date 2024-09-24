@@ -14,9 +14,8 @@ import { diffLines, formatLines } from 'unidiff'; // Import unidiff
 import { remark } from 'remark';
 import remarkStringify from 'remark-stringify';
 import CodeMirror from '@uiw/react-codemirror';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { javascript } from '@codemirror/lang-javascript';
-import { oneDark } from '@codemirror/theme-one-dark'; // Import the oneDark theme
-import { basicSetup } from 'codemirror';
 
 // Define the fetchMarkdownTemplate function
 const fetchMarkdownTemplate = async (templateName = 'default') => { // Accept a templateName parameter with 'default' as fallback
@@ -97,9 +96,7 @@ const Index = () => {
 
   // Initialize CodeMirror extensions
   const extensions = [
-    basicSetup,
-    javascript(),
-    oneDark,
+    javascript({ jsx: true }),
     // Add other extensions as needed
   ];
 
@@ -112,7 +109,10 @@ const Index = () => {
 
   // Function to stringify AST back to markdown
   const stringifyASTToMarkdown = (ast) => {
-    return remark().use(remarkStringify).stringify(ast);
+    return remark().use(remarkStringify, {
+      listItemIndent: 'one',
+    })
+    .stringify(ast);
   };
 
   // Function to fetch the list of available templates
@@ -749,7 +749,7 @@ const Index = () => {
         // Editor and Command Input Section
         <div className="flex flex-col md:flex-row gap-4">
           {/* Editor Section */}
-          <div className="w-full md:w-2/3 prose">
+          <div className="w-full md:w-2/3">
             {/* Assign the ref to the textarea */}
             <textarea ref={editorContainerRef} id="markdown-editor" />
           </div>
@@ -795,7 +795,7 @@ const Index = () => {
                     height="400px" // Adjust height as needed
                     extensions={extensions}
                     onChange={(value) => setScriptCommand(value)}
-                    theme="dark" // Use "dark" theme if desired
+                    theme={vscodeDark}
                     className="mb-4 border border-gray-200 rounded" // Optional styling
                     // Optional: Add additional props as needed
                   />
