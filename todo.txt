@@ -1,5 +1,5 @@
 Add help for script type
-Show script output in diff view too
+Show script result in diff view too
 Can we import libraries into th efunction? Can also return instead of await
    await import('https://cdn.jsdelivr.net/npm/lodash-es/lodash.js')
     .then(_ => {
@@ -28,8 +28,7 @@ Can we import libraries into th efunction? Can also return instead of await
         console.error('Error loading modules:', err);
     });
 
-Syntax highlighting etc in Script textbox. Use CodeMirror.
-Use full width s owe get larger command area
+Use full width so we get larger command area
 Saving of prompts
 Help for predefined - generated
 Parallel exceution of TTS conversion

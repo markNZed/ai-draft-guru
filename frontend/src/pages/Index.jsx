@@ -11,9 +11,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Diff, Hunk, parseDiff } from 'react-diff-view'; // Ensure react-diff-view is installed
 import 'react-diff-view/style/index.css'; // Import react-diff-view styles
 import { diffLines, formatLines } from 'unidiff'; // Import unidiff
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Adjust the path as needed
 import { remark } from 'remark';
 import remarkStringify from 'remark-stringify';
+import CodeMirror from '@uiw/react-codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import { oneDark } from '@codemirror/theme-one-dark'; // Import the oneDark theme
+import { basicSetup } from 'codemirror';
+
 
 // Define the fetchMarkdownTemplate function
 const fetchMarkdownTemplate = async (templateName = 'default') => { // Accept a templateName parameter with 'default' as fallback
@@ -87,6 +91,17 @@ const Index = () => {
   const [ast, setAST] = useState(null); // State to track the parsed AST
 
   const scriptTextareaRef = useRef(null); // Ref for the script Textarea
+
+  const scriptEditorRef = useRef(null); // Ref for CodeMirror container
+  const editorViewRef = useRef(null); // Ref to store CodeMirror instance
+
+  // Initialize CodeMirror extensions
+  const extensions = [
+    basicSetup,
+    javascript(),
+    oneDark,
+    // Add other extensions as needed
+  ];
 
   // Function to parse markdown to AST using Remark
   const parseMarkdownToAST = (markdown) => {
@@ -299,7 +314,7 @@ const Index = () => {
 
   const sendCommand = async (command, content) => {
     try {
-      const response = await applyCommand(command, content, 'script-gen');
+      const response = await applyCommand(command, content, 'free-form');
       if (response.isJSON && response.modifiedContent) {
         return response.modifiedContent;
       } else {
@@ -395,16 +410,10 @@ const Index = () => {
         // Convert the updated AST back to markdown
         const updatedMarkdown = stringifyASTToMarkdown(updatedAST);
 
-        // Update the editor's content with the new markdown
-        markdownContentRef.current = updatedMarkdown;
-        setCurrentContent(updatedMarkdown);
-        const easyMDE = getEasyMDEInstance();
-        if (easyMDE) {
-          easyMDE.value(updatedMarkdown); // Update the editor's content
-        }
-
-        // Add the new version
-        addNewVersion(updatedMarkdown, 'Script applied');
+        setProposedContent(updatedMarkdown);
+        setCommandHistory(prevHistory => [...prevHistory, "Ran script"]);
+        // Add a new version with the associated command
+        addNewVersion(updatedMarkdown, "Ran script");
 
         toast.success('Script executed successfully!');
         console.log('Updated Markdown:', updatedMarkdown);
@@ -707,10 +716,10 @@ const Index = () => {
             <Tabs value={commandType} onValueChange={(value) => setCommandType(value)}>
               {/* Tabs for Command Types */}
                 <TabsList className="mb-4">
-                  <TabsTrigger value="predefined">Predefined Command</TabsTrigger>
-                  <TabsTrigger value="free-form">Free-form Command</TabsTrigger>
+                  <TabsTrigger value="predefined">Predefined</TabsTrigger>
+                  <TabsTrigger value="free-form">Free-form</TabsTrigger>
                   <TabsTrigger value="script">Script</TabsTrigger>
-                  <TabsTrigger value="script-gen">Generate Script</TabsTrigger>
+                  <TabsTrigger value="script-gen">Generate</TabsTrigger>
                 </TabsList>
 
                 {/* TabsContent for predefined commands */}
@@ -737,13 +746,15 @@ const Index = () => {
 
                 {/* TabsContent for script-based commands */}
                 <TabsContent value="script">
-                  <Textarea
-                    ref={scriptTextareaRef} 
-                    placeholder="Write a script to manipulate the AST..."
+                  {/* Replace textarea with CodeMirror */}
+                  <CodeMirror
                     value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    className="mb-4"
-                    disabled={isLoading}
+                    height="400px" // Adjust height as needed
+                    extensions={extensions}
+                    onChange={(value) => setCommand(value)}
+                    theme="dark" // Use "dark" theme if desired
+                    className="mb-4 border border-gray-200 rounded" // Optional styling
+                    // Optional: Add additional props as needed
                   />
                 </TabsContent>
 
@@ -759,7 +770,7 @@ const Index = () => {
                 </TabsContent>
                 {/* Apply button visible for all command types */}
                 <Button onClick={applyChanges} disabled={isLoading} className="w-full">
-                  {isLoading ? 'Applying...' : 'Apply Changes'}
+                  {isLoading ? 'Applying...' : 'Run Command'}
                 </Button>
 
                 {commandHistory.length > 0 && (
