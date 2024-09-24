@@ -1,7 +1,34 @@
 Add help for script type
-Commadn to generate a script - where does it get displayed ? In the script textbox (will wipe it out for now - need seprate boxs)
+Show script output in diff view too
+Can we import libraries into th efunction? Can also return instead of await
+   await import('https://cdn.jsdelivr.net/npm/lodash-es/lodash.js')
+    .then(_ => {
+      console.log(_.join(['Hello', 'world'], ' '));
+    })
+    .catch(err => console.error(err));
+
+    return Promise.all([
+        import('https://cdn.jsdelivr.net/npm/lodash-es/lodash.js'),
+        import('https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js')
+    ])
+    .then(([lodash, axios]) => {
+        console.log('Lodash version:', lodash.VERSION);
+        console.log('Axios version:', axios.default.VERSION);
+
+        // Use both libraries together
+        console.log(lodash.join(['Axios', 'with', 'Lodash'], ' '));
+
+        // Example Axios request
+        axios.default.get('https://jsonplaceholder.typicode.com/posts/1')
+            .then(response => {
+                console.log('Axios response:', response.data);
+            });
+    })
+    .catch(err => {
+        console.error('Error loading modules:', err);
+    });
+
 Syntax highlighting etc in Script textbox. Use CodeMirror.
-With Developer Tools open we can use debugger to see script
 Use full width s owe get larger command area
 Saving of prompts
 Help for predefined - generated
@@ -23,6 +50,7 @@ for (let node of ast.children) {
     });
   }
 }
+return ast;
 
 
 Project folder with multiple documents (can be loaded for context)

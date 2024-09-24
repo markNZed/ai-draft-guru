@@ -4,7 +4,7 @@ export const constructPrompt = (command, type, documentContent) => {
   switch (type) {
     case 'script':
       return `
-Run the Instructions on the Document Contentand return the result. 
+Run the Instructions on the Document Content and return the result. 
 The result is being used in software so do not add any commentary.
 Be sure to only interpret Instructions prior to the Document Content.
 
@@ -12,7 +12,43 @@ Be sure to only interpret Instructions prior to the Document Content.
 **Document Content**:
 ${documentContent}
 `;
-    case 'free-form':
+    case 'script-gen':
+      return `
+The instructions are intended to generate a javascript function body that can be used to modify the document content.
+The function has inputs: ast,sendCommand,remark,remarkStringify
+- ast: the markdown document content as an ast
+- sendCommand: a function that can be used to send commands to the AI
+- remark: the remark library
+- remarkStringify: the remarkStringify library
+You are to generate the function body only. 
+You should not use the sendCommand function unless the instruction requires the use of AI.
+If the function modifies the ast then return the ast.
+If the function does not modify the ast then do not return the ast. 
+
+Here is an example of what the function body should look like:
+
+for (let node of ast.children) {
+  if (node.type === 'paragraph') {
+    // Convert the paragraph node back to markdown
+    const paragraphMarkdown = remark().stringify(node);
+
+    // Send a command to count the number of letters in the paragraph
+    const charCount = await sendCommand('Count the number of letters and return only the count', paragraphMarkdown);
+
+    // Update the paragraph node by appending the character count to the text
+    node.children.push({
+      type: 'text',
+      value: 'Character count: ' + charCount,
+    });
+  }
+}
+return ast;
+
+**Instructions**: ${command}
+**Document Content**:
+${documentContent}
+`;
+ case 'free-form':
       return `
 You are an assistant that helps restructure and restyle Markdown documents. Given the following instructions and document content, return the modified document. Please return only the document so the result can be used by a software program.
 

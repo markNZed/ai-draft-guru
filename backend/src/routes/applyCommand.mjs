@@ -59,7 +59,7 @@ router.post(
     const contentWithLineNumbers = addRowNumbers(markdownContent);
     // Step 2: Construct prompt with modified content
     let prompt;
-    if (type === 'free-form' || type === 'script') {
+    if (type === 'free-form' || type === 'script' || type === 'script-gen') {
       prompt = constructPrompt(command, type, markdownContent);
     } else {
       prompt = constructPrompt(command, type, contentWithLineNumbers);
@@ -82,16 +82,15 @@ router.post(
 
       // Clean up the AI response by removing code block formatting
       const cleanedAiText = aiText
-        .replace(/```json\s*/g, '') // Remove the opening ```json
-        .replace(/```markdown\s*/g, '') // Remove the opening ```markdown
+        .replace(/```(?:json|markdown|javascript)?\s*/g, '')
         .replace(/```/g, ''); // Remove the closing ```
 
       let modifiedContent = '';
       let operations = {};
       let specialResults = {};
 
-      if (type === 'free-form' || type === 'script') {
-        modifiedContent = aiText;
+      if (type === 'free-form' || type === 'script' || type === 'script-gen') {
+        modifiedContent = cleanedAiText;
       } else {
         try {
           operations = JSON.parse(cleanedAiText);
@@ -137,7 +136,7 @@ router.post(
       }
 
       // Step 6: Reattach YAML front matter as HTML comments if it was present
-      if (type !== 'script') {
+      if (type !== 'script' && type !== 'script-gen') {
         if (Object.keys(yamlConfig).length > 0) {
           const yamlContent = yaml.dump(yamlConfig).trim();
           modifiedContent = `<!--\n${yamlContent}\n-->\n\n${modifiedContent}`;

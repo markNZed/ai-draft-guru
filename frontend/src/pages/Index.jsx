@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { applyCommand } from '@/lib/api';
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"; // Ensure these are imported correctly
 import { Diff, Hunk, parseDiff } from 'react-diff-view'; // Ensure react-diff-view is installed
 import 'react-diff-view/style/index.css'; // Import react-diff-view styles
 import { diffLines, formatLines } from 'unidiff'; // Import unidiff
@@ -85,6 +85,8 @@ const Index = () => {
   const [commandType, setCommandType] = useState('predefined'); // 'predefined' or 'free-form'
 
   const [ast, setAST] = useState(null); // State to track the parsed AST
+
+  const scriptTextareaRef = useRef(null); // Ref for the script Textarea
 
   // Function to parse markdown to AST using Remark
   const parseMarkdownToAST = (markdown) => {
@@ -297,7 +299,7 @@ const Index = () => {
 
   const sendCommand = async (command, content) => {
     try {
-      const response = await applyCommand(command, content, 'script');
+      const response = await applyCommand(command, content, 'script-gen');
       if (response.isJSON && response.modifiedContent) {
         return response.modifiedContent;
       } else {
@@ -319,6 +321,27 @@ const Index = () => {
     }
 
     setIsLoading(true);
+
+    if (commandType === 'script-gen') {
+      try {
+        const response = await applyCommand(command, currentContent, 'script-gen');
+        if (response.isJSON && response.modifiedContent) {
+          setCommand(response.modifiedContent);
+          setCommandHistory(prevHistory => [...prevHistory, command]);
+          setCommandType('script'); // Switch to script tab
+          scriptTextareaRef.current?.focus(); // Focus on the script Textarea
+        } else {
+          console.log('Invalid response from AI', response);
+          toast.error('Invalid response from AI');
+        }
+        setIsLoading(false);
+        return; 
+      } catch (error) {
+        console.error('Error in applyChanges:', error);
+        toast.error(`Error applying changes: ${error.message}`);
+        setIsLoading(false);
+      }
+    }
 
     if (commandType === 'script') {
       try {
@@ -681,40 +704,64 @@ const Index = () => {
 
           {/* Command and History Section */}
           <div className="w-full md:w-1/3">
-            <Tabs defaultValue="command">
-              <TabsContent value="command">
-                <div className="mb-4">
-                  <label className="block mb-2 font-semibold">Command Type:</label>
-                  <RadioGroup
-                    value={commandType}
-                    onValueChange={(value) => setCommandType(value)}
-                    className="flex space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="predefined" id="predefined" />
-                      <label htmlFor="predefined">Predefined</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="free-form" id="free-form" />
-                      <label htmlFor="free-form">Free Form</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="script" id="script" />
-                      <label htmlFor="script">Script</label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                <Textarea
-                  placeholder="Enter your command here..."
-                  value={command}
-                  onChange={handleCommandChange}
-                  //onKeyDown={handleKeyDown}
-                  className="mb-4"
-                  disabled={isLoading}
-                />
+            <Tabs value={commandType} onValueChange={(value) => setCommandType(value)}>
+              {/* Tabs for Command Types */}
+                <TabsList className="mb-4">
+                  <TabsTrigger value="predefined">Predefined Command</TabsTrigger>
+                  <TabsTrigger value="free-form">Free-form Command</TabsTrigger>
+                  <TabsTrigger value="script">Script</TabsTrigger>
+                  <TabsTrigger value="script-gen">Generate Script</TabsTrigger>
+                </TabsList>
+
+                {/* TabsContent for predefined commands */}
+                <TabsContent value="predefined">
+                  <Textarea
+                    placeholder="Enter a predefined command..."
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    className="mb-4"
+                    disabled={isLoading}
+                  />
+                </TabsContent>
+
+                {/* TabsContent for free-form commands */}
+                <TabsContent value="free-form">
+                  <Textarea
+                    placeholder="Enter free-form instructions..."
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    className="mb-4"
+                    disabled={isLoading}
+                  />
+                </TabsContent>
+
+                {/* TabsContent for script-based commands */}
+                <TabsContent value="script">
+                  <Textarea
+                    ref={scriptTextareaRef} 
+                    placeholder="Write a script to manipulate the AST..."
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    className="mb-4"
+                    disabled={isLoading}
+                  />
+                </TabsContent>
+
+                {/* TabsContent for AI-generated script commands */}
+                <TabsContent value="script-gen">
+                  <Textarea
+                    placeholder="Generate script using AI..."
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    className="mb-4"
+                    disabled={isLoading}
+                  />
+                </TabsContent>
+                {/* Apply button visible for all command types */}
                 <Button onClick={applyChanges} disabled={isLoading} className="w-full">
                   {isLoading ? 'Applying...' : 'Apply Changes'}
                 </Button>
+
                 {commandHistory.length > 0 && (
                   <div className="mt-4">
                     <h3 className="font-semibold mb-2">Command History:</h3>
@@ -736,7 +783,6 @@ const Index = () => {
                 <Button onClick={clearLocalStorage} className="mt-4 w-full">
                   Clear Storage & Reset Editor
                 </Button>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
