@@ -372,8 +372,8 @@ const Index = () => {
       const response = await applyCommand(
         commandToSend,
         'free-form',
-        currentProject.name,
-        currentFile.name,
+        currentProject?.name,
+        currentFile?.name,
         currentContent,
       );
       
@@ -499,15 +499,6 @@ const Index = () => {
   }, [currentFile]);
   
   const runCommand = async () => {
-    if (!currentProject) {
-      toast.error('Please select a project.');
-      return;
-    }
-
-    if (!currentFile) {
-      toast.error('Please select a file.');
-      return;
-    }
 
     let commandToSend = '';
     let currentType = activeCommandType;
@@ -560,8 +551,8 @@ const Index = () => {
         const response = await applyCommand(
           commandToSend,
           activeCommandType,
-          currentProject.name,
-          currentFile.name,
+          currentProject?.name,
+          currentFile?.name,
           currentContent,
         );
         if (response.isJSON && response.modifiedContent) {
@@ -658,8 +649,8 @@ const Index = () => {
         const response = await applyCommand(
           commandToSend,
           currentType,
-          currentProject.name,
-          currentFile.name,
+          currentProject?.name,
+          currentFile?.name,
           currentContent,
         );
   
@@ -1022,7 +1013,7 @@ const Index = () => {
       )}
 
       {/* Conditional Rendering Based on proposedContent */}
-      {!proposedContent ? (
+      { !proposedContent ? (
         // Editor and Command Input Section
         <div className="flex flex-col md:flex-row gap-4">
           {/* Editor Section */}
@@ -1036,8 +1027,8 @@ const Index = () => {
             <Tabs value={activeCommandType} onValueChange={(value) => setActiveCommandType(value)}>
               {/* Tabs for Command Types */}
                 <TabsList className="mb-4">
-                  <TabsTrigger value="predefined">Predefined</TabsTrigger>
                   <TabsTrigger value="free-form">Free-form</TabsTrigger>
+                  <TabsTrigger value="predefined">Predefined</TabsTrigger>
                   <TabsTrigger value="script">Script</TabsTrigger>
                   <TabsTrigger value="script-gen">Generate</TabsTrigger>
                 </TabsList>
@@ -1145,7 +1136,7 @@ const Index = () => {
               </Tabs>
             </div>
           </div>
-        ) : currentFile && proposedContent ? (
+        ) : (
           // Diff and Approval Section
           <div className="proposed-changes-container">
             <h2 className="text-xl font-semibold mb-4">Review Proposed Changes</h2>
@@ -1165,8 +1156,6 @@ const Index = () => {
               Go Back to Editor
             </Button>
           </div>
-        ): (
-          <div>Please select a project and a file to begin editing.</div>
         )}
 
         {/* Undo and Version Controls moved to the bottom */}
