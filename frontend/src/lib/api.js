@@ -19,7 +19,7 @@ const apiClient = axios.create({
  * @param {string} fileName - The ID of the file.
  * @returns {object} - The response data from the backend.
  */
-export const applyCommandToFile = async (command, typeToSend, projectName, fileName, content) => {
+export const applyCommand = async (command, typeToSend, projectName, fileName, content) => {
   try {
     const response = await apiClient.post(
       `/apply-command/${projectName}/${fileName}`, // Updated endpoint as per API.md
@@ -56,34 +56,6 @@ export const applyCommandToFile = async (command, typeToSend, projectName, fileN
       error.response?.data?.message ||
       error.message ||
       'An error occurred while processing the command';
-    throw new Error(message);
-  }
-};
-
-/**
- * Applies a command to all files within a project.
- * 
- * @param {string} command - The user command.
- * @param {string} typeToSend - The type of command.
- * @param {string} projectName - The ID of the project.
- * @returns {object} - The response data from the backend.
- */
-export const applyCommandToAllFiles = async (command, typeToSend, projectName) => {
-  try {
-    const response = await apiClient.post(
-      `/project/${projectName}/apply-command`, // Endpoint for applying command to all files
-      { command, type: typeToSend },
-      {
-        responseType: 'json', // Expecting JSON response
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      'An error occurred while applying the command to all files';
     throw new Error(message);
   }
 };

@@ -17,7 +17,7 @@ import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { javascript } from '@codemirror/lang-javascript';
 import ProjectManager from '@/components/ProjectManager';
 import FileManager from '@/components/FileManager';
-import { applyCommandToAllFiles, applyCommandToFile } from '@/lib/api';
+import { applyCommand } from '@/lib/api';
 import debounce from 'lodash.debounce'; 
 
 const AUTOSAVE = false;
@@ -161,90 +161,6 @@ const Index = () => {
     // Add other extensions as needed
   ];
 
-  // Function to handle applying commands to all files
-  const applyCommandToAll = async () => {
-    if (!currentProject) {
-      toast.error('Please select a project.');
-      return;
-    }
-
-    let commandToSend = '';
-    let currentType = activeCommandType;
-
-    // Determine which command to send based on active tab
-    switch (activeCommandType) {
-      case 'predefined':
-        if (!predefinedCommand.trim()) {
-          toast.error('Please enter a predefined command.');
-          return;
-        }
-        commandToSend = predefinedCommand;
-        break;
-      case 'free-form':
-        if (!freeFormCommand.trim()) {
-          toast.error('Please enter free-form instructions.');
-          return;
-        }
-        commandToSend = freeFormCommand;
-        break;
-      case 'script':
-        if (!scriptCommand.trim()) {
-          toast.error('Please enter a script.');
-          return;
-        }
-        commandToSend = scriptCommand;
-        break;
-      case 'script-gen':
-        if (!scriptGenCommand.trim()) {
-          toast.error('Please enter a script generation command.');
-          return;
-        }
-        commandToSend = scriptGenCommand;
-        break;
-      default:
-        toast.error('Invalid command type.');
-        return;
-    }
-
-    if (!commandToSend) {
-      toast.error('Please select a command.');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const response = await applyCommandToAllFiles(commandToSend, currentType, currentProject.name);
-
-      if (response.results) {
-        // Handle the results for each file
-        const successes = response.results.filter(r => r.status === 'Success');
-        const failures = response.results.filter(r => r.status === 'Failed');
-
-        // Update each successfully modified file in openFiles
-        successes.forEach(result => {
-          updateFileContent(result.name, result.data.modifiedContent);
-        });
-
-        // Notify the user
-        if (successes.length > 0) {
-          toast.success(`${successes.length} file(s) updated successfully.`);
-        }
-        if (failures.length > 0) {
-          toast.error(`${failures.length} file(s) failed to update.`);
-        }
-
-      } else {
-        throw new Error('Invalid response from backend.');
-      }
-    } catch (error) {
-      console.error('Error applying command to all files:', error);
-      toast.error(`Failed to apply command to all files: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Function to parse markdown to AST using Remark
   const parseMarkdownToAST = (markdown) => {
     const parsedAST = remark().parse(markdown);
@@ -373,11 +289,11 @@ const Index = () => {
   // Initialize EasyMDE on component mount
   useEffect(() => {
     const initializeEditor = async () => {
-      //const templateContent = await fetchMarkdownTemplate();
-      //if (templateContent === null) {
-      //  return; // Do not initialize editor if fetching failed
-      //}
-      const templateContent = "";
+      const templateContent = await fetchMarkdownTemplate();
+      if (templateContent === null) {
+        return; // Do not initialize editor if fetching failed
+      }
+      //const templateContent = "";
 
 
       // Load versions from localStorage
@@ -453,7 +369,7 @@ const Index = () => {
 
   const sendCommand = async (command, content) => {
     try {
-      const response = await applyCommandToFile(
+      const response = await applyCommand(
         commandToSend,
         'free-form',
         currentProject.name,
@@ -641,7 +557,7 @@ const Index = () => {
 
     if (activeCommandType === 'script-gen') {
       try {
-        const response = await applyCommandToFile(
+        const response = await applyCommand(
           commandToSend,
           activeCommandType,
           currentProject.name,
@@ -739,7 +655,7 @@ const Index = () => {
     
     if (activeCommandType === 'predefined' || activeCommandType === 'free-form') {
       try {
-        const response = await applyCommandToFile(
+        const response = await applyCommand(
           commandToSend,
           currentType,
           currentProject.name,
@@ -767,7 +683,6 @@ const Index = () => {
           if (disposition && disposition.includes('filename=')) {
             filename = disposition.split('filename=')[1].replace(/"/g, '');
           }
-
           const blob = response.data; 
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -781,19 +696,11 @@ const Index = () => {
         }
 
         // Handle DOCX file if present
-        if (response.docxBase64) {
-          const byteCharacters = atob(response.docxBase64);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], {
-            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          });
+        if (contentType.includes('application/msword')) {
+          const blob = response.data; 
           const link = document.createElement('a');
           link.href = URL.createObjectURL(blob);
-          link.download = response.name || 'document.docx';
+          link.download = 'document.docx'; // You can customize the filename as needed
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -1073,32 +980,6 @@ const Index = () => {
         />
       )}
 
-      {/* Tabs for Open Files */}
-      {openFiles.length > 0 && (
-        <Tabs value={currentFile ? currentFile.name : null} onValueChange={(value) => {
-          const selectedFile = openFiles.find(file => file.name === value);
-          if (selectedFile) setCurrentFile(selectedFile);
-        }}>
-          <TabsList className="mb-4 flex flex-wrap">
-            {openFiles.map(file => (
-              <div key={file.name} className="flex items-center">
-                <TabsTrigger value={file.name} className="flex items-center">
-                  {file.name}
-                </TabsTrigger>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => closeFile(file.name)} 
-                  className="ml-1"
-                >
-                  ×
-                </Button>
-              </div>
-            ))}
-          </TabsList>
-        </Tabs>
-      )}
-
       {/* Dropdown to select templates */}
       {currentFile && !proposedContent ? (
         <div className="mb-4 flex items-center space-x-4">
@@ -1236,10 +1117,7 @@ const Index = () => {
                 {/* Apply Command Buttons */}
                 <div className="mt-4 space-y-2">
                   <Button onClick={runCommand} disabled={isLoading} className="w-full">
-                    {isLoading ? 'Applying...' : 'Run on Active File'}
-                  </Button>
-                  <Button onClick={applyCommandToAll} disabled={isLoading || !currentProject} className="w-full">
-                    {isLoading ? 'Applying...' : 'Run on All Files'}
+                    {isLoading ? 'Applying...' : 'Run'}
                   </Button>
                 </div>
 

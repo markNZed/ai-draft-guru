@@ -9,9 +9,7 @@ import sanitize from 'sanitize-filename';
 import logger from '../config/logger.mjs';
 import helmet from 'helmet';
 import { fileURLToPath } from 'url';
-import { applyCommandToFile } from '../services/commandService.mjs';
 import { getFilePath, getSanitizedProjectName, getSanitizedFileName } from '../utils/pathUtils.mjs';
-
 
 // Initialize Express Router
 const router = express.Router();
@@ -441,107 +439,6 @@ router.get(
       }
       logger.error('Error fetching file content', { error: error.message });
       res.status(500).json({ message: 'Failed to fetch file content.' });
-    }
-  })
-);
-
-/**
- * Apply command to all files within a project
- */
-router.post(
-  '/:projectName/apply-command',
-  [
-    param('projectName')
-      .isString()
-      .isLength({ min: 3, max: 30 })
-      .withMessage('Project name must be between 3 and 30 characters.')
-      .trim()
-      .custom((value) => {
-        const sanitized = getSanitizedProjectName(value);
-        if (sanitized !== value) {
-          throw new Error('Project name contains invalid characters.');
-        }
-        return true;
-      }),
-    body('command')
-      .isString()
-      .isLength({ min: 1 })
-      .withMessage('Command is required.'),
-    body('type')
-      .optional()
-      .isString()
-      .withMessage('Type must be a string if provided.'),
-  ],
-  asyncHandler(async (req, res) => {
-    const { projectName } = req.params;
-    const { command, type } = req.body;
-    const { id: requestId } = req;
-
-    logger.debug('Received bulk /apply-command request', {
-      requestId,
-      projectName,
-      command,
-      type,
-    });
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      logger.warn('Validation errors on bulk apply-command', { errors: errors.array() });
-      return res.status(400).json({ message: 'Invalid input.', errors: errors.array() });
-    }
-
-    let projectPath;
-    try {
-      projectPath = getFilePath(projectName);
-    } catch (err) {
-      logger.warn('Invalid project path', { error: err.message });
-      return res.status(400).json({ message: 'Invalid project path.' });
-    }
-
-    try {
-      const files = await fs.readdir(projectPath, { withFileTypes: true });
-      const markdownFiles = files.filter(dirent => dirent.isFile() && path.extname(dirent.name) === '.md');
-
-      if (markdownFiles.length === 0) {
-        return res.status(400).json({ message: 'No markdown files found in the project.' });
-      }
-
-      // Process each file concurrently
-      const results = await Promise.all(markdownFiles.map(async (file) => {
-        const fileName = file.name;
-
-        try {
-          const result = await applyCommandToFile(projectName, fileName, command, type, requestId);
-          return {
-            fileName,
-            status: result.status,
-            data: result.data,
-          };
-        } catch (error) {
-          logger.error('Error applying command to file', { fileName, error: error.message });
-          return {
-            fileName,
-            status: 500,
-            data: { message: error.message },
-          };
-        }
-      }));
-
-      // Optionally, you can summarize the results
-      const successCount = results.filter(r => r.status === 200).length;
-      const failureCount = results.length - successCount;
-
-      res.json({
-        summary: {
-          totalFiles: results.length,
-          successfulUpdates: successCount,
-          failedUpdates: failureCount,
-        },
-        results,
-      });
-    } catch (error) {
-      logger.error('Error applying command to all files', { requestId, error: error.message });
-      res.status(500).json({ message: 'Failed to apply command to all files.' });
     }
   })
 );

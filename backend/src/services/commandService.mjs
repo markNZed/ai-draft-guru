@@ -24,13 +24,8 @@ import yaml from 'js-yaml';
  * @param {string} requestId - Unique identifier for the request.
  * @returns {object} - Result of the operation.
  */
-export const applyCommandToFile = async (projectName, fileName, command, type, requestId) => {
+export const applyCommand = async (projectName, fileName, command, type, documentContent, requestId) => {
   try {
-    // Resolve the absolute file path
-    const filePath = getFilePath(projectName, fileName); // Ensures '.md' extension
-    
-    // Read the original file content
-    const documentContent = await fs.readFile(filePath, 'utf-8');
     
     // Parse YAML front matter if present
     let yamlConfig = {};
@@ -137,31 +132,14 @@ export const applyCommandToFile = async (projectName, fileName, command, type, r
       }
     }
     
-    // Write the modified content back to the file
-    await fs.writeFile(filePath, modifiedContent, 'utf-8');
-    logger.info(`File updated successfully: ${filePath}`, { requestId });
-    
-    // Handle special results (e.g., generating MP3 or DOCX)
-    if (specialResults.mp3Buffer) {
-      const mp3Path = path.join(path.dirname(filePath), `${path.basename(filePath, '.md')}.mp3`);
-      await fs.writeFile(mp3Path, specialResults.mp3Buffer);
-      logger.info(`MP3 file created successfully: ${mp3Path}`, { requestId });
-    }
-    
-    if (specialResults.docxBuffer) {
-      const docxPath = path.join(path.dirname(filePath), `${path.basename(filePath, '.md')}.docx`);
-      await fs.writeFile(docxPath, specialResults.docxBuffer);
-      logger.info(`DOCX file created successfully: ${docxPath}`, { requestId });
-    }
-    
     // Prepare and return the response object
     const responseObject = {
       originalContent: documentContent,
       modifiedContent: modifiedContent,
       operationsApplied: operations.operations || [],
       specialResults: {
-        mp3: specialResults.mp3Buffer ? `${path.basename(fileName, '.md')}.mp3` : undefined,
-        docx: specialResults.docxBuffer ? `${path.basename(fileName, '.md')}.docx` : undefined,
+        mp3Buffer: specialResults.mp3Buffer,
+        docxBuffer: specialResults.docxBuffer
       },
       message: 'File updated successfully.',
     };

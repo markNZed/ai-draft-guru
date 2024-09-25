@@ -1,3 +1,4 @@
+Should not need to select project
 Test run on all files
   How should apply script run ? 
     Feed it a single AST but how to split on return ?

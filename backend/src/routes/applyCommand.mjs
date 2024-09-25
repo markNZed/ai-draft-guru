@@ -4,7 +4,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import asyncHandler from 'express-async-handler';
 import logger from '../config/logger.mjs';
-import { applyCommandToFile } from '../services/commandService.mjs'; // Import the service function
+import { applyCommand } from '../services/commandService.mjs'; // Import the service function
 import { getFilePath, getSanitizedProjectName, getSanitizedFileName } from '../utils/pathUtils.mjs';
 
 const router = express.Router();
@@ -26,7 +26,7 @@ router.post(
   ],
   asyncHandler(async (req, res) => {
     const { projectName, fileName } = req.params;
-    const { command, type } = req.body;
+    const { command, type, content } = req.body;
     const { id: requestId } = req;
 
     logger.debug('Received /apply-command request', {
@@ -49,8 +49,32 @@ router.post(
       // Apply the command using the service function
       const sanitizedProjectName = getSanitizedProjectName(projectName);
       const sanitizedFileName = getSanitizedFileName(fileName);
-      const result = await applyCommandToFile(sanitizedProjectName, sanitizedFileName, command, type, requestId);
+      const result = await applyCommand(sanitizedProjectName, sanitizedFileName, command, type, content, requestId);
 
+      // Handle MP3 conversion
+      if (result.data.specialResults.mp3Buffer) {
+        // Set headers and send the MP3 file as a download
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Content-Disposition': 'attachment; filename="document.mp3"',
+          'Content-Length': result.data.specialResults.mp3Buffer.length,
+        });
+        logger.debug('Sending MP3 file in response', { requestId });
+        return res.send(result.data.specialResults.mp3Buffer);
+      }
+
+      // Handle DOCX conversion if applicable
+      if (result.data.specialResults.docxBuffer) {
+        // Set headers and send the DOCX file as a download
+        res.set({
+          'Content-Type': 'application/msword',
+          'Content-Disposition': 'attachment; filename="document.docx"',
+          'Content-Length': result.data.specialResults.docxBuffer.length,
+        });
+        logger.debug('Sending DOCX file in response', { requestId });
+        return res.send(result.data.specialResults.docxBuffer);
+      }
+    
       res.json(result.data);
     } catch (error) {
       logger.error('Error applying command to file', {
