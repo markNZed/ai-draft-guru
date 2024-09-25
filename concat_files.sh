@@ -4,7 +4,7 @@
 # Script: combine_files.sh
 # Description: Concatenates all useful project files into a single file,
 #              excluding specified directories, files, file patterns (e.g., '*.svg'),
-#              and binary files.
+#              and binary files. Follows symbolic links.
 # Usage: ./combine_files.sh [directory] [output_file.txt]
 # If no directory is specified, defaults to the current directory.
 # If no output file is specified, defaults to 'combined_file.txt'.
@@ -56,22 +56,21 @@ excluded_files=(
   "concat_files.sh"
   ".gitignore"
   ".prettierrc"
+  "todo.txt"
 )
 
 # Array of file patterns (using wildcards, e.g., *.svg or *.png)
 excluded_patterns=(
-  "*.ico"
-  "*.svg"
-  "*.png"
   "*.log"
+  "*.css"
 )
 
 # -------------------------------
 # 3. Build the 'find' Exclusion Expression
 # -------------------------------
 
-# Initialize the find command as an array
-find_command=(find "$input_directory")
+# Initialize the find command as an array, using -L to follow symbolic links
+find_command=(find -L "$input_directory")
 
 # Begin grouping excluded directories
 find_command+=("(")
@@ -95,8 +94,8 @@ fi
 # Close the grouping and add -prune to exclude the directories
 find_command+=(")" "-prune" "-o")
 
-# Specify that we are interested in files only
-find_command+=("-type" "f")
+# Specify that we are interested in files and symbolic links
+find_command+=("(" "-type" "f" "-o" "-type" "l" ")")
 
 # Loop through each excluded file and add to the find command
 for file in "${excluded_files[@]}"; do
@@ -112,14 +111,22 @@ done
 find_command+=("-print")
 
 # ---------------------------
-# 4. Execute the 'find' Command, Filter Out Binary Files, and Concatenate Files
+# 4. Echo the Escaped 'find' Command
+# ---------------------------
+
+# Print the escaped version of the find command
+escaped_find_command=$(printf "%q " "${find_command[@]}")
+echo "Escaped find command: $escaped_find_command"
+
+# ---------------------------
+# 5. Execute the 'find' Command, Filter Out Binary Files, and Concatenate Files
 # ---------------------------
 
 # Run the find command and process each file
 # Use "IFS=" and "read -r" to correctly handle filenames with spaces or special characters
 "${find_command[@]}" | while IFS= read -r file; do
-  # Check if the file is a text file (not binary)
-  if file "$file" | grep -q 'text'; then
+  # Check if the file is a text file (not binary) based on extension or MIME type
+  if [[ "$file" == *.md || "$file" == *.json || "$file" == *.js || "$file" == *.jsx || "$file" == *.html || "$file" == *.css || "$file" == *.config.js ]]; then
     # Add a header with the file name
     echo "==== $file ====" >> "$output_file"
 
@@ -129,12 +136,24 @@ find_command+=("-print")
     # Add a newline for readability between files
     echo "" >> "$output_file"
   else
-    echo "Skipping binary file: $file"
+    # Use 'file' command for other files and check for text type
+    if file "$file" | grep -q 'text'; then
+      # Add a header with the file name
+      echo "==== $file ====" >> "$output_file"
+
+      # Append the file's content
+      cat "$file" >> "$output_file"
+
+      # Add a newline for readability between files
+      echo "" >> "$output_file"
+    else
+      echo "Skipping binary file: $file"
+    fi
   fi
 done
 
 # ---------------------
-# 5. Completion Message
+# 6. Completion Message
 # ---------------------
 
 echo "All text files have been concatenated into $output_file"

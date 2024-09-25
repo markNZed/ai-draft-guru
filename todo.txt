@@ -1,4 +1,4 @@
-Add help for script type
+https://elevenlabs.io/pricing
 Error No hunks found in the parsed diff. 
 Command history not restoring correctly
 Show script result in diff view too
@@ -30,7 +30,6 @@ Can we import libraries into th efunction? Can also return instead of await
         console.error('Error loading modules:', err);
     });
 
-Use full width so we get larger command area
 Saving of prompts
 Help for predefined - generated
 Parallel exceution of TTS conversion

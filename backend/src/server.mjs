@@ -2,6 +2,7 @@
 
 import express from 'express';
 import path from 'path';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { resolve } from 'path';
 
@@ -16,6 +17,7 @@ import { errorHandler } from './middleware/errorHandler.mjs';
 import applyCommandRouter from './routes/applyCommand.mjs';
 import templateRouter from './routes/template.mjs';
 import templatesRouter from './routes/templates.mjs';
+import projectRouter from './routes/project.mjs'; 
 
 import helmet from 'helmet';
 
@@ -58,10 +60,17 @@ app.use(errorHandler);
 // Parse JSON bodies
 app.use(express.json());
 
+// Ensure the projects directory exists
+const projectsBaseDir = path.join(path.resolve(), 'projects');
+fs.mkdir(projectsBaseDir, { recursive: true })
+  .then(() => logger.info(`Projects directory ensured at ${projectsBaseDir}`))
+  .catch(err => logger.error(`Failed to create projects directory: ${err.message}`));
+
 // Mount routers
 app.use('/apply-command', applyCommandRouter);
 app.use('/template', templateRouter);
 app.use('/templates', templatesRouter);
+app.use('/project', projectRouter); 
 
 // Error handling middleware
 app.use((err, req, res, next) => {

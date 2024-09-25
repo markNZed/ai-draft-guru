@@ -6,7 +6,6 @@ import 'easymde/dist/easymde.min.css';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { applyCommand } from '@/lib/api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"; // Ensure these are imported correctly
 import { Diff, Hunk, parseDiff } from 'react-diff-view'; // Ensure react-diff-view is installed
 import 'react-diff-view/style/index.css'; // Import react-diff-view styles
@@ -16,6 +15,10 @@ import remarkStringify from 'remark-stringify';
 import CodeMirror from '@uiw/react-codemirror';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { javascript } from '@codemirror/lang-javascript';
+import ProjectManager from '@/components/ProjectManager';
+import FileManager from '@/components/FileManager';
+import { applyCommandToAllFiles } from '@/lib/api'; // Import the new API functions
+
 
 // Define the fetchMarkdownTemplate function
 const fetchMarkdownTemplate = async (templateName = 'default') => { // Accept a templateName parameter with 'default' as fallback
@@ -94,11 +97,113 @@ const Index = () => {
 
   const scriptTextareaRef = useRef(null); // Ref for the script Textarea
 
+  // New States for Projects and Files
+  const [currentProject, setCurrentProject] = useState(null);
+  const [currentFile, setCurrentFile] = useState(null);
+  const [openFiles, setOpenFiles] = useState([]); // Array of { fileId, name, content }
+
+  // New state to track if applying command to all files
+  const [applyToAllFiles, setApplyToAllFiles] = useState(false);
+
+  // Add this inside your component
+  const [isHelpExpanded, setIsHelpExpanded] = useState(true);
+
+  // Toggle function
+  const toggleExpand = () => {
+    setIsHelpExpanded(prevState => !prevState);
+  };
+
   // Initialize CodeMirror extensions
   const extensions = [
     javascript({ jsx: true }),
     // Add other extensions as needed
   ];
+
+  // Function to handle applying commands to all files
+  const applyCommandToAll = async () => {
+    if (!currentProject) {
+      toast.error('Please select a project.');
+      return;
+    }
+
+    let commandToSend = '';
+    let currentType = activeCommandType;
+
+    // Determine which command to send based on active tab
+    switch (activeCommandType) {
+      case 'predefined':
+        if (!predefinedCommand.trim()) {
+          toast.error('Please enter a predefined command.');
+          return;
+        }
+        commandToSend = predefinedCommand;
+        break;
+      case 'free-form':
+        if (!freeFormCommand.trim()) {
+          toast.error('Please enter free-form instructions.');
+          return;
+        }
+        commandToSend = freeFormCommand;
+        break;
+      case 'script':
+        if (!scriptCommand.trim()) {
+          toast.error('Please enter a script.');
+          return;
+        }
+        commandToSend = scriptCommand;
+        break;
+      case 'script-gen':
+        if (!scriptGenCommand.trim()) {
+          toast.error('Please enter a script generation command.');
+          return;
+        }
+        commandToSend = scriptGenCommand;
+        break;
+      default:
+        toast.error('Invalid command type.');
+        return;
+    }
+
+    if (!commandToSend) {
+      toast.error('Please select a command.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await applyCommandToAllFiles(commandToSend, currentType, currentProject.projectId);
+
+      if (response.results) {
+        // Handle the results for each file
+        const successes = response.results.filter(r => r.status === 'Success');
+        const failures = response.results.filter(r => r.status === 'Failed');
+
+        // Update each successfully modified file in openFiles
+        successes.forEach(result => {
+          updateFileContent(result.fileId, result.data.modifiedContent);
+        });
+
+        // Notify the user
+        if (successes.length > 0) {
+          toast.success(`${successes.length} file(s) updated successfully.`);
+        }
+        if (failures.length > 0) {
+          toast.error(`${failures.length} file(s) failed to update.`);
+        }
+
+        // Optionally, refresh the file list
+        fetchFilesForProject(currentProject.projectId);
+      } else {
+        throw new Error('Invalid response from backend.');
+      }
+    } catch (error) {
+      console.error('Error applying command to all files:', error);
+      toast.error(`Failed to apply command to all files: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Function to parse markdown to AST using Remark
   const parseMarkdownToAST = (markdown) => {
@@ -301,7 +406,14 @@ const Index = () => {
 
   const sendCommand = async (command, content) => {
     try {
-      const response = await applyCommand(command, content, 'free-form');
+      const response = await applyCommand(
+        commandToSend,
+        currentContent,
+        'free-form',
+        currentProject.projectId,
+        currentFile.fileId
+      );
+      
       if (response.isJSON && response.modifiedContent) {
         return response.modifiedContent;
       } else {
@@ -314,7 +426,85 @@ const Index = () => {
     }
   };
 
+  // Function to handle project selection
+  const handleProjectSelect = (project) => {
+    setCurrentProject(project);
+    setCurrentFile(null);
+    setOpenFiles([]); // Reset open files when a new project is selected
+    setCommandHistory([]);
+    setUndoStack([]);
+    setVersions([]);
+    fetchFilesForProject(project.projectId);
+  };
+
+  // Function to handle file selection
+  const handleFileSelect = async (file) => {
+    // Check if file is already open
+    const isOpen = openFiles.find(f => f.fileId === file.fileId);
+    if (isOpen) {
+      setCurrentFile(isOpen);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/project/${currentProject.projectId}/files/${file.fileId}`);
+      if (!response.ok) throw new Error('Failed to fetch file content.');
+      const data = await response.json();
+      const newFile = { ...file, content: data.content };
+      setOpenFiles([...openFiles, newFile]);
+      setCurrentFile(newFile);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load file content.');
+    }
+  };
+
+  // Function to fetch files for the current project
+  const fetchFilesForProject = async (projectId) => {
+    try {
+      const response = await fetch(`/api/project/${projectId}/files`);
+      if (!response.ok) throw new Error('Failed to fetch files.');
+      const data = await response.json();
+      setOpenFiles([]);
+      setCurrentFile(null);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load files.');
+    }
+  };
+
+  // Function to close a file tab
+  const closeFile = (fileId) => {
+    setOpenFiles(openFiles.filter(file => file.fileId !== fileId));
+    if (currentFile && currentFile.fileId === fileId) {
+      setCurrentFile(null);
+    }
+  };
+
+  // Function to update file content after approval
+  const updateFileContent = (fileId, newContent) => {
+    setOpenFiles((prevFiles) =>
+      prevFiles.map((file) =>
+        file.fileId === fileId ? { ...file, content: newContent } : file
+      )
+    );
+  
+    if (currentFile && currentFile.fileId === fileId) {
+      setCurrentFile((prevFile) => ({ ...prevFile, content: newContent }));
+    }
+  };
+  
   const applyChanges = async () => {
+    if (!currentProject) {
+      toast.error('Please select a project.');
+      return;
+    }
+
+    if (!currentFile) {
+      toast.error('Please select a file.');
+      return;
+    }
+
     let commandToSend = '';
     let currentType = activeCommandType;
 
@@ -363,7 +553,13 @@ const Index = () => {
 
     if (activeCommandType === 'script-gen') {
       try {
-        const response = await applyCommand(commandToSend, currentContent, 'script-gen');
+        const response = await applyCommand(
+          commandToSend,
+          currentContent,
+          activeCommandType,
+          currentProject.projectId,
+          currentFile.fileId
+        );
         if (response.isJSON && response.modifiedContent) {
           setScriptCommand(response.modifiedContent);
           setCommandHistory(prevHistory => [...prevHistory, { command: commandToSend, type: currentType }]);
@@ -454,8 +650,14 @@ const Index = () => {
     }
     
     try {
-      const response = await applyCommand(commandToSend, currentContent, currentType);
-
+      const response = await applyCommand(
+        commandToSend,
+        currentContent,
+        currentType,
+        currentProject.projectId,
+        currentFile.fileId
+      );
+ 
       if (response.isJSON) {
         // Handle modified content if present
         if (response.modifiedContent) {
@@ -533,10 +735,12 @@ const Index = () => {
       // Add the approved changes as a new version with a default command
       addNewVersion(proposedContent, 'Approved changes');
 
-      // First reset proposedContent to trigger the editor rendering
-      setProposedContent(null);
-
-      toast.success('Changes approved and applied!');
+      if (proposedContent && currentFile) {
+        // Update the file's content in openFiles
+        updateFileContent(currentFile.fileId, proposedContent);
+        setProposedContent(null);
+        toast.success('Changes approved and applied!');
+      }
     }
   };
   
@@ -699,12 +903,112 @@ const Index = () => {
     toast.success(`Reverted to version from ${new Date(version.timestamp).toLocaleString()}.`);
   };
 
+  // Define helper texts for each command type
+  const commandHelperTexts = {
+    'predefined': {
+      description: 'Write in natural langauge and then the systme will executes only predefined commands on the selected file. These commands are pre-configured and are intended to perform specific tasks quickly and efficiently. The system will choose the appropriate sequence of commands.',
+      examples: [
+        'Example 1: "Create a word version" (Downloads a MS Word file)',
+        'Example 2: "Generate an mp3" (Downloads an MP3 if the file is formated in the style of a podcast)',
+      ],
+      tips: 'Tip: Predefined commands are useful for special features and tasks that modify the document using software.',
+    },
+    'free-form': {
+      description: 'Allows you to provide natural language instructions to modify the selected file. This is the most flexible command type, where you can describe the changes you want to make, and the system will attempt to interpret and apply them. The AI will work on the entire content.',
+      examples: [
+        'Example 1: "Summarize the introduction section to three sentences." (Shortens the introduction based on key points)',
+        'Example 2: "Convert the bullet points in section 2 to numbered steps." (Transforms a bullet list into a numbered list)',
+        'Example 3: "Replace all occurrences of \'AI\' with \'Artificial Intelligence.\'" (Performs a search and replace across the document)',
+      ],
+      tips: 'Tip: Be as clear and specific as possible when giving free-form instructions. Ambiguous commands might not work as expected. Start with simple instructions and build complexity as needed. The AI may corrupt parts of the document you ar enot expecting it to change.',
+    },
+    'script': {
+      description: `Executes a custom JavaScript to manipulate the file. The script can perform complex operations on the document, such as restructuring sections, adding new content, or even generating new data. 
+      The JavaScript has access to the AST (Abstract Syntax Tree) and to the remark and remark-stringify libraries for parsing and converting markdown. 
+      Additionally, there is a function sendCommand("instruction", string) that allows you to run a free-form command on the string.`, 
+      examples: [
+        `Example 1: 
+        // Traverse the AST and process paragraphs
+        for (let node of ast.children) {
+          if (node.type === 'paragraph') {
+            // Convert the paragraph node back to markdown
+            const paragraphMarkdown = remark().stringify(node);
+
+            // Send a command to count the number of letters in the paragraph
+            const charCount = await sendCommand(
+              'Count the number of letters and return only the count',
+              paragraphMarkdown
+            );
+
+            // Update the paragraph node by appending the character count to the text
+            node.children.push({
+              type: 'text',
+              value: \` (Character count: \${charCount})\`,
+            });
+          }
+        }`
+      ],
+      tips: 'Tip: When writing scripts, ensure that you are familiar with the document structure. Simple syntax errors can lead to unexpected results. Test the script on small sections before applying it to the entire document.',
+    },
+    'script-gen': {
+      description: 'Generates a custom script based on your instructions. This is useful when you have a general idea of what you want to accomplish but need assistance generating the exact code or logic.',
+      examples: [
+        'Example 1: "Generate a script to automatically add numbered headings." (Creates a script that adds numbering to all heading elements)',
+        'Example 2: "Generate a script to emphasize the first sentence of every paragraph." (Boldens or highlights the first sentence in every paragraph)',
+        'Example 3: "Generate a script to remove all links from the document." (Removes all hyperlinks from the document)',
+      ],
+      tips: 'Tip: Use clear and specific instructions for script generation. The more precise your request, the better the generated script will match your needs. After generating a script, review it carefully before running.',
+    },
+  };
+  
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
 
+      {/* Project Manager */}
+      <ProjectManager 
+        onProjectSelect={handleProjectSelect} 
+        currentProjectId={currentProject ? currentProject.projectId : null} 
+      />
+
+      {/* File Manager */}
+      {currentProject && (
+        <FileManager 
+          projectId={currentProject.projectId} 
+          onFileSelect={handleFileSelect} 
+          currentFileId={currentFile ? currentFile.fileId : null}
+        />
+      )}
+
+      {/* Tabs for Open Files */}
+      {openFiles.length > 0 && (
+        <Tabs value={currentFile ? currentFile.fileId : null} onValueChange={(value) => {
+          const selectedFile = openFiles.find(file => file.fileId === value);
+          if (selectedFile) setCurrentFile(selectedFile);
+        }}>
+          <TabsList className="mb-4 flex flex-wrap">
+            {openFiles.map(file => (
+              <div key={file.fileId} className="flex items-center">
+                <TabsTrigger value={file.fileId} className="flex items-center">
+                  {file.name}
+                </TabsTrigger>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => closeFile(file.fileId)} 
+                  className="ml-1"
+                >
+                  ×
+                </Button>
+              </div>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+
       {/* Dropdown to select templates */}
-      {!proposedContent ? (
+      {currentFile && !proposedContent ? (
         <div className="mb-4 flex items-center space-x-4">
           {/* Label */}
           <label htmlFor="template-select" className="font-semibold">
@@ -811,10 +1115,41 @@ const Index = () => {
                     disabled={isLoading}
                   />
                 </TabsContent>
-                {/* Apply button visible for all command types */}
-                <Button onClick={applyChanges} disabled={isLoading} className="w-full">
-                  {isLoading ? 'Applying...' : 'Run Command'}
-                </Button>
+
+                {activeCommandType && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    {/* Toggle button */}
+                    <button
+                      onClick={toggleExpand}
+                      className="text-blue-500 hover:underline mb-2"
+                    >
+                      {isHelpExpanded ? 'Hide Help' : 'Show Help'}
+                    </button>
+
+                    {/* Expanded content, only shown when isHelpExpanded is true */}
+                    {isHelpExpanded && (
+                      <div>
+                        <p>{commandHelperTexts[activeCommandType].description}</p>
+                        <ul className="list-disc pl-5 mt-2">
+                          {commandHelperTexts[activeCommandType].examples.map((example, index) => (
+                            <li key={index} className="mb-1">{example}</li>
+                          ))}
+                        </ul>
+                        <p className="mt-2 font-semibold">{commandHelperTexts[activeCommandType].tips}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Apply Command Buttons */}
+                <div className="mt-4 space-y-2">
+                  <Button onClick={applyChanges} disabled={isLoading} className="w-full">
+                    {isLoading ? 'Applying...' : 'Run Command on Selected File'}
+                  </Button>
+                  <Button onClick={applyCommandToAll} disabled={isLoading || !currentProject} className="w-full">
+                    {isLoading ? 'Applying...' : 'Run Command on All Files'}
+                  </Button>
+                </div>
 
                 {commandHistory.length > 0 && (
                   <div className="mt-4">
@@ -837,72 +1172,59 @@ const Index = () => {
                 <Button onClick={clearLocalStorage} className="mt-4 w-full">
                   Clear Storage & Reset Editor
                 </Button>
+              </Tabs>
+            </div>
+          </div>
+        ) : currentFile && proposedContent ? (
+          // Diff and Approval Section
+          {/* ... [Existing Diff and Approval UI] */}
+        ): (
+          <div>Please select a project and a file to begin editing.</div>
+        )}
+
+        {/* Undo and Version Controls moved to the bottom */}
+        {currentFile && (
+          <div className="flex flex-col gap-4 mt-8">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleUndo} disabled={undoStack.length === 0}>
+                Undo
+              </Button>
+            </div>
+
+            <Tabs defaultValue="versions">
+              <TabsContent value="versions">
+                <div className="mt-2">
+                  <h3 className="font-semibold mb-2">Version History:</h3>
+                  {versions.length === 0 ? (
+                    <p>No versions available.</p>
+                  ) : (
+                    <ul className="list-disc pl-5 max-h-60 overflow-y-auto">
+                      {/* Reverse the versions array to show latest first */}
+                      {[...versions].reverse().map((version, index) => (
+                        <li key={index} className="mb-2">
+                          <div className="flex flex-col">
+                            <button
+                              onClick={() => handleSelectVersion(version)}
+                              className="text-blue-500 hover:underline"
+                            >
+                              {new Date(version.timestamp).toLocaleString()}
+                            </button>
+                            {/* Display the associated command/instruction */}
+                            <span className="text-sm text-gray-600 ml-4">
+                              Instruction: {version.command}
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </TabsContent>
             </Tabs>
           </div>
-        </div>
-      ) : (
-        // Diff and Approval Section
-        <div className="proposed-changes-container">
-          <h2 className="text-xl font-semibold mb-4">Review Proposed Changes</h2>
-          <div className="proposed-changes mb-6">
-            {renderDiff(currentContent, proposedContent)}
-          </div>
-          <div className="flex gap-4">
-            <Button onClick={approveChanges} color="green" className="flex-1">
-              Approve
-            </Button>
-            <Button onClick={rejectChanges} color="red" className="flex-1">
-              Reject
-            </Button>
-          </div>
-          {/* Optional: Add a button to go back to editing without approving/rejecting */}
-          <Button onClick={() => setProposedContent(null)} className="mt-4 w-full">
-            Go Back to Editor
-          </Button>
-        </div>
-      )}
-
-      {/* Undo and Version Controls moved to the bottom */}
-      <div className="flex flex-col gap-4 mt-8">
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={handleUndo} disabled={undoStack.length === 0}>
-            Undo
-          </Button>
-        </div>
-
-        <Tabs defaultValue="versions">
-          <TabsContent value="versions">
-            <div className="mt-2">
-              <h3 className="font-semibold mb-2">Version History:</h3>
-              {versions.length === 0 ? (
-                <p>No versions available.</p>
-              ) : (
-                <ul className="list-disc pl-5 max-h-60 overflow-y-auto">
-                  {/* Reverse the versions array to show latest first */}
-                  {[...versions].reverse().map((version, index) => (
-                    <li key={index} className="mb-2">
-                      <div className="flex flex-col">
-                        <button
-                          onClick={() => handleSelectVersion(version)}
-                          className="text-blue-500 hover:underline"
-                        >
-                          {new Date(version.timestamp).toLocaleString()}
-                        </button>
-                        {/* Display the associated command/instruction */}
-                        <span className="text-sm text-gray-600 ml-4">
-                          Instruction: {version.command}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+        )}
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-export default Index;
+  export default Index;
