@@ -73,7 +73,7 @@ Creates a new project.
 
   ```json
   {
-    "projectId": "string",  // UUID of the created project
+    "projectName": "string",  // UUID of the created project
     "name": "string"        // Name of the project
   }
   ```
@@ -124,7 +124,7 @@ Retrieves a list of all existing projects.
   {
     "projects": [
       {
-        "projectId": "string",
+        "projectName": "string",
         "name": "string"
       },
       // Additional projects...
@@ -151,7 +151,7 @@ Retrieves a list of all existing projects.
 **Endpoint**
 
 ```
-POST /api/project/{projectId}/files
+POST /api/project/{projectName}/files
 ```
 
 **Description**
@@ -160,7 +160,7 @@ Creates a new file within a specified project.
 
 **Path Parameters**
 
-- `projectId`: UUID of the project where the file will be created.
+- `projectName`: UUID of the project where the file will be created.
 
 **Request Body**
 
@@ -176,7 +176,7 @@ Creates a new file within a specified project.
 
   ```json
   {
-    "fileId": "string",  // UUID of the created file
+    "fileName": "string",  // UUID of the created file
     "name": "string"     // Name of the file
   }
   ```
@@ -220,7 +220,7 @@ Creates a new file within a specified project.
 **Endpoint**
 
 ```
-GET /api/project/{projectId}/files
+GET /api/project/{projectName}/files
 ```
 
 **Description**
@@ -229,7 +229,7 @@ Retrieves all files within a specified project.
 
 **Path Parameters**
 
-- `projectId`: UUID of the project.
+- `projectName`: UUID of the project.
 
 **Response**
 
@@ -239,7 +239,7 @@ Retrieves all files within a specified project.
   {
     "files": [
       {
-        "fileId": "string",
+        "fileName": "string",
         "name": "string"
       },
       // Additional files...
@@ -282,7 +282,7 @@ Retrieves all files within a specified project.
 **Endpoint**
 
 ```
-GET /api/project/{projectId}/files/{fileId}
+GET /api/project/{projectName}/files/{fileName}
 ```
 
 **Description**
@@ -291,8 +291,8 @@ Retrieves the content of a specific file within a project.
 
 **Path Parameters**
 
-- `projectId`: UUID of the project.
-- `fileId`: UUID of the file.
+- `projectName`: UUID of the project.
+- `fileName`: UUID of the file.
 
 **Response**
 
@@ -300,7 +300,7 @@ Retrieves the content of a specific file within a project.
 
   ```json
   {
-    "fileId": "string",
+    "fileName": "string",
     "content": "string"  // Markdown content of the file
   }
   ```
@@ -332,7 +332,7 @@ Retrieves the content of a specific file within a project.
 **Endpoint**
 
 ```
-DELETE /api/project/{projectId}/files/{fileId}
+DELETE /api/project/{projectName}/files/{fileName}
 ```
 
 **Description**
@@ -341,8 +341,8 @@ Deletes a specific file within a project.
 
 **Path Parameters**
 
-- `projectId`: UUID of the project.
-- `fileId`: UUID of the file to be deleted.
+- `projectName`: UUID of the project.
+- `fileName`: UUID of the file to be deleted.
 
 **Response**
 
@@ -383,7 +383,7 @@ Deletes a specific file within a project.
 **Endpoint**
 
 ```
-POST /apply-command/{projectId}/{fileId}
+POST /apply-command/{projectName}/{fileName}
 ```
 
 **Description**
@@ -392,8 +392,8 @@ Applies a command to a specific file within a project. The command can modify th
 
 **Path Parameters**
 
-- `projectId`: UUID of the project.
-- `fileId`: UUID of the file.
+- `projectName`: UUID of the project.
+- `fileName`: UUID of the file.
 
 **Request Body**
 
@@ -461,7 +461,7 @@ Applies a command to a specific file within a project. The command can modify th
 **Endpoint**
 
 ```
-POST /api/project/{projectId}/apply-command
+POST /api/project/{projectName}/apply-command
 ```
 
 **Description**
@@ -470,7 +470,7 @@ Applies a command to all files within a specified project. Useful for batch oper
 
 **Path Parameters**
 
-- `projectId`: UUID of the project.
+- `projectName`: UUID of the project.
 
 **Request Body**
 
@@ -489,7 +489,7 @@ Applies a command to all files within a specified project. Useful for batch oper
   {
     "results": [
       {
-        "fileId": "string",
+        "fileName": "string",
         "status": "Success",
         "data": {
           "originalContent": "string",
@@ -501,7 +501,7 @@ Applies a command to all files within a specified project. Useful for batch oper
         }
       },
       {
-        "fileId": "string",
+        "fileName": "string",
         "status": "Failed",
         "message": "Error message detailing the failure"
       }

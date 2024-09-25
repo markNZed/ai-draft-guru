@@ -15,15 +15,19 @@ const apiClient = axios.create({
  * 
  * @param {string} command - The user command.
  * @param {string} typeToSend - The type of command ('predefined', 'free-form', etc.).
- * @param {string} projectId - The ID of the project.
- * @param {string} fileId - The ID of the file.
+ * @param {string} projectName - The ID of the project.
+ * @param {string} fileName - The ID of the file.
  * @returns {object} - The response data from the backend.
  */
-export const applyCommandToFile = async (command, typeToSend, projectId, fileId) => {
+export const applyCommandToFile = async (command, typeToSend, projectName, fileName, content) => {
   try {
     const response = await apiClient.post(
-      `/apply-command/${projectId}/${fileId}`, // Updated endpoint as per API.md
-      { command, type: typeToSend },
+      `/apply-command/${projectName}/${fileName}`, // Updated endpoint as per API.md
+      { 
+        command, 
+        type: typeToSend,
+        content,
+      },
       {
         responseType: 'blob', // Use 'blob' to handle binary data
       }
@@ -61,13 +65,13 @@ export const applyCommandToFile = async (command, typeToSend, projectId, fileId)
  * 
  * @param {string} command - The user command.
  * @param {string} typeToSend - The type of command.
- * @param {string} projectId - The ID of the project.
+ * @param {string} projectName - The ID of the project.
  * @returns {object} - The response data from the backend.
  */
-export const applyCommandToAllFiles = async (command, typeToSend, projectId) => {
+export const applyCommandToAllFiles = async (command, typeToSend, projectName) => {
   try {
     const response = await apiClient.post(
-      `/api/project/${projectId}/apply-command`, // Endpoint for applying command to all files
+      `/project/${projectName}/apply-command`, // Endpoint for applying command to all files
       { command, type: typeToSend },
       {
         responseType: 'json', // Expecting JSON response

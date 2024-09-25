@@ -1,8 +1,22 @@
-https://elevenlabs.io/pricing
+Test run on all files
+  How should apply script run ? 
+    Feed it a single AST but how to split on return ?
+       For now just disable This
+
+Run in dev container - what about files ?
+
+Generate should change run button to "Run" not on file. Hide run on all button
+
+If we force the loading of project then don't load the editor with default
+
+Auto-save only if the content has changed 
+
+A project could have a file with saved prompts etc
+
 Error No hunks found in the parsed diff. 
 Command history not restoring correctly
 Show script result in diff view too
-Can we import libraries into th efunction? Can also return instead of await
+Can we import libraries into th efunction? Yes (could provide a helper function)
    await import('https://cdn.jsdelivr.net/npm/lodash-es/lodash.js')
     .then(_ => {
       console.log(_.join(['Hello', 'world'], ' '));
@@ -30,40 +44,24 @@ Can we import libraries into th efunction? Can also return instead of await
         console.error('Error loading modules:', err);
     });
 
-Saving of prompts
-Help for predefined - generated
+Saving of prompts - better on the server side I guess (so we can have predefined examples)
 Parallel exceution of TTS conversion
-Add example to README:
-// Traverse the AST and process paragraphs
-for (let node of ast.children) {
-  if (node.type === 'paragraph') {
-    // Convert the paragraph node back to markdown
-    const paragraphMarkdown = remark().stringify(node);
-
-    // Send a command to count the number of letters in the paragraph
-    const charCount = await sendCommand('Count the number of letters and return only the count', paragraphMarkdown);
-
-    // Update the paragraph node by appending the character count to the text
-    node.children.push({
-      type: 'text',
-      value: ` (Character count: ${charCount})`,
-    });
-  }
-}
-return ast;
-
 
 Project folder with multiple documents (can be loaded for context)
 Returning errors from OpenAI e.g. TTS voice missing to UI
+Create/debug testing
 Test all operations
 Generate a name for the file that fits the script
 Generate sound effects
+https://elevenlabs.io/pricing
 Generate music intro/outro
 Operations on selections
-Integrate pre-recorded sections
+Integrate pre-recorded audio
 Progress indicator
 Context-aware prompts that take into account the current structure and content of the document.
-Tests need testing
+    Maybe a project description that prepends the system prompt.
+
+Refactoring
 
 Key Components to Implement:
     Controllers: Handle HTTP requests and responses.

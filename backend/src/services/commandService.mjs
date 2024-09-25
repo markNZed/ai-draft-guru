@@ -1,39 +1,40 @@
 // backend/src/services/commandService.mjs
 
-import path from 'path';
 import fs from 'fs/promises';
+import path from 'path';
+import { getFilePath } from '../utils/pathUtils.mjs';
 import { parseYAMLFrontMatter } from '../utils/frontMatterParser.mjs';
 import { applyOperations } from '../utils/operationsApplier.mjs';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkStringify from 'remark-stringify';
-import yaml from 'js-yaml';
 import { addRowNumbers } from '../utils/rowNumberUtils.mjs';
 import logger from '../config/logger.mjs';
 import { constructPrompt } from '../utils/promptBuilder.mjs';
-import { createChatCompletion } from '../services/openaiService.mjs';
+import { createChatCompletion } from './openaiService.mjs';
+import yaml from 'js-yaml';
 
 /**
- * Applies a command to a single file.
+ * Applies a command to a single file: processes, modifies, and writes back.
  *
- * @param {string} projectId
- * @param {string} fileId
- * @param {string} command
- * @param {string} type - Type of command (e.g., 'bulk', 'single')
- * @param {string} requestId
- * @returns {object} - Result of the operation
+ * @param {string} projectName - The name of the project.
+ * @param {string} fileName - The name of the file (with extension).
+ * @param {string} command - The command to apply.
+ * @param {string} type - The type of command (e.g., 'default', 'script').
+ * @param {string} requestId - Unique identifier for the request.
+ * @returns {object} - Result of the operation.
  */
-export const applyCommandToFile = async (projectId, fileId, command, type, requestId) => {
-  const projectsBaseDir = path.join(path.resolve(), 'projects');
-  const filePath = path.join(projectsBaseDir, projectId, `${fileId}.md`);
-
+export const applyCommandToFile = async (projectName, fileName, command, type, requestId) => {
   try {
-    // Read file content
+    // Resolve the absolute file path
+    const filePath = getFilePath(projectName, fileName); // Ensures '.md' extension
+    
+    // Read the original file content
     const documentContent = await fs.readFile(filePath, 'utf-8');
-
+    
     // Parse YAML front matter if present
     let yamlConfig = {};
-    let markdownContent = documentContent; // Use content with row numbers
+    let markdownContent = documentContent;
     try {
       const parsed = parseYAMLFrontMatter(documentContent);
       yamlConfig = parsed.config;
@@ -46,17 +47,19 @@ export const applyCommandToFile = async (projectId, fileId, command, type, reque
       });
       // Proceed without YAML configuration
     }
-
-    // Step 1: Insert row numbers (appended to lines)
+    
+    // Insert row numbers (optional based on command type)
     const contentWithLineNumbers = addRowNumbers(markdownContent);
-    // Step 2: Construct prompt with modified content
+    
+    // Construct AI prompt based on command type
     let prompt;
     if (type === 'free-form' || type === 'script' || type === 'script-gen') {
       prompt = constructPrompt(command, type, markdownContent);
     } else {
       prompt = constructPrompt(command, type, contentWithLineNumbers);
     }
-
+    
+    // Generate AI response
     const aiText = await createChatCompletion(
       [
         {
@@ -68,21 +71,23 @@ export const applyCommandToFile = async (projectId, fileId, command, type, reque
       ],
       requestId
     );
-
+    
     logger.debug(`AI Response: ${aiText}`, { requestId });
-
-    // Clean up the AI response by removing code block formatting
+    
+    // Clean AI response by removing code block formatting if present
     const cleanedAiText = aiText
       .replace(/```(?:json|markdown|javascript)?\s*/g, '')
-      .replace(/```/g, ''); // Remove the closing ```
-
+      .replace(/```/g, '');
+    
     let modifiedContent = '';
     let operations = {};
     let specialResults = {};
-
+    
     if (type === 'free-form' || type === 'script' || type === 'script-gen') {
+      // For these types, AI provides the full modified content
       modifiedContent = cleanedAiText;
     } else {
+      // For other types, AI provides operations to apply
       try {
         operations = JSON.parse(cleanedAiText);
         if (!operations.operations || !Array.isArray(operations.operations)) {
@@ -99,18 +104,17 @@ export const applyCommandToFile = async (projectId, fileId, command, type, reque
         });
         throw new Error('Invalid response format from AI service.');
       }
-
-      // Step 3: Parse the document content into AST
-      const processor = unified()
-        .use(remarkParse);
+      
+      // Parse the markdown content into AST
+      const processor = unified().use(remarkParse);
       const tree = processor.parse(markdownContent);
       logger.debug('Parsed document content into AST', { tree });
-
-      // Step 4: Apply the operations to the AST
+      
+      // Apply the operations to the AST
       specialResults = await applyOperations(tree, operations.operations, yamlConfig, requestId);
       logger.debug('Applied operations to AST', { requestId });
-
-      // Step 5: Serialize the modified AST back to Markdown
+      
+      // Serialize the modified AST back to Markdown
       const serializer = unified()
         .use(remarkStringify, {
           listItemIndent: '1',
@@ -123,36 +127,48 @@ export const applyCommandToFile = async (projectId, fileId, command, type, reque
         });
       modifiedContent = serializer.stringify(tree);
       logger.debug('Serialized modified AST back to Markdown', { requestId, modifiedContent });
-
-      // Step 6: Reattach YAML front matter as HTML comments if it was present
+      
+      // Reattach YAML front matter as HTML comments if present and not a script type
       if (type !== 'script' && type !== 'script-gen') {
         if (Object.keys(yamlConfig).length > 0) {
           const yamlContent = yaml.dump(yamlConfig).trim();
           modifiedContent = `<!--\n${yamlContent}\n-->\n\n${modifiedContent}`;
         }
       }
-
-      // Handle file write operations
-      if (type !== 'script' && type !== 'script-gen') {
-        await fs.writeFile(filePath, modifiedContent, 'utf-8');
-        logger.info('File content updated', { projectId, fileId });
-      }
     }
-
-    // Handle MP3 and DOCX conversions if applicable
-    // ... (similar to applyCommandRouter)
-
-    // Prepare the response object
-    const responseObject = { 
-      originalContent: documentContent, 
-      modifiedContent: modifiedContent, 
-      operationsApplied: operations.operations,
-      message: 'Success' 
+    
+    // Write the modified content back to the file
+    await fs.writeFile(filePath, modifiedContent, 'utf-8');
+    logger.info(`File updated successfully: ${filePath}`, { requestId });
+    
+    // Handle special results (e.g., generating MP3 or DOCX)
+    if (specialResults.mp3Buffer) {
+      const mp3Path = path.join(path.dirname(filePath), `${path.basename(filePath, '.md')}.mp3`);
+      await fs.writeFile(mp3Path, specialResults.mp3Buffer);
+      logger.info(`MP3 file created successfully: ${mp3Path}`, { requestId });
+    }
+    
+    if (specialResults.docxBuffer) {
+      const docxPath = path.join(path.dirname(filePath), `${path.basename(filePath, '.md')}.docx`);
+      await fs.writeFile(docxPath, specialResults.docxBuffer);
+      logger.info(`DOCX file created successfully: ${docxPath}`, { requestId });
+    }
+    
+    // Prepare and return the response object
+    const responseObject = {
+      originalContent: documentContent,
+      modifiedContent: modifiedContent,
+      operationsApplied: operations.operations || [],
+      specialResults: {
+        mp3: specialResults.mp3Buffer ? `${path.basename(fileName, '.md')}.mp3` : undefined,
+        docx: specialResults.docxBuffer ? `${path.basename(fileName, '.md')}.docx` : undefined,
+      },
+      message: 'File updated successfully.',
     };
-
+    
     return { status: 200, data: responseObject };
   } catch (error) {
     logger.error('Error applying command to file', { requestId, error: error.message });
-    throw error;
+    throw error; // Re-throw to be handled by the route
   }
 };

@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@radix-ui/react-radio-group": "^1.2.0",
+        "axios": "^1.7.7",
         "cors": "^2.8.5",
         "dotenv": "^16.0.3",
         "express": "^4.18.2",
@@ -24,6 +25,7 @@
         "html-docx-js": "^0.3.1",
         "html-to-docx": "^1.8.0",
         "js-yaml": "^4.1.0",
+        "lodash.debounce": "^4.0.8",
         "lru-cache": "^11.0.1",
         "openai": "^4.63.0",
         "rehype-stringify": "^10.0.0",
@@ -32,6 +34,7 @@
         "remark-rehype": "^11.1.1",
         "remark-stringify": "^10.0.3",
         "remark-toc": "^9.0.0",
+        "sanitize-filename": "^1.6.3",
         "strip-markdown": "^6.0.0",
         "unified": "^10.1.2",
         "unist-util-remove": "^4.0.0",

@@ -5,42 +5,34 @@ import { body, validationResult } from 'express-validator';
 import asyncHandler from 'express-async-handler';
 import logger from '../config/logger.mjs';
 import { applyCommandToFile } from '../services/commandService.mjs'; // Import the service function
-import path from 'path';
-import fs from 'fs/promises';
+import { getFilePath, getSanitizedProjectName, getSanitizedFileName } from '../utils/pathUtils.mjs';
 
 const router = express.Router();
-
-// Base directory for projects
-const projectsBaseDir = path.join(path.resolve(), 'projects');
-
-/**
- * Utility to get project path
- */
-const getProjectPath = (projectId) => path.join(projectsBaseDir, projectId);
-
-/**
- * Utility to get file path within a project
- */
-const getFilePath = (projectId, fileId) => path.join(getProjectPath(projectId), `${fileId}.md`);
 
 /**
  * Apply command to a specific file
  */
 router.post(
-  '/:projectId/:fileId',
+  '/:projectName/:fileName', // Updated route path for clarity
   [
-    body('command').isString().notEmpty(),
-    body('type').optional().isString(),
+    body('command')
+      .isString()
+      .notEmpty()
+      .withMessage('Command must be a non-empty string.'),
+    body('type')
+      .optional()
+      .isString()
+      .withMessage('Type must be a string if provided.'),
   ],
   asyncHandler(async (req, res) => {
-    const { projectId, fileId } = req.params;
+    const { projectName, fileName } = req.params;
     const { command, type } = req.body;
     const { id: requestId } = req;
 
     logger.debug('Received /apply-command request', {
       requestId,
-      projectId,
-      fileId,
+      projectName,
+      fileName,
       command,
       type,
     });
@@ -54,10 +46,26 @@ router.post(
     }
 
     try {
-      const result = await applyCommandToFile(projectId, fileId, command, type || 'single', requestId);
+      // Apply the command using the service function
+      const sanitizedProjectName = getSanitizedProjectName(projectName);
+      const sanitizedFileName = getSanitizedFileName(fileName);
+      const result = await applyCommandToFile(sanitizedProjectName, sanitizedFileName, command, type, requestId);
+
       res.json(result.data);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      logger.error('Error applying command to file', {
+        requestId,
+        projectName,
+        fileName,
+        error: error.message,
+      });
+
+      // Differentiate error types for more informative responses
+      if (error.code === 'ENOENT') {
+        return res.status(404).json({ message: 'File not found.' });
+      }
+
+      res.status(500).json({ message: error.message || 'Failed to apply command.' });
     }
   })
 );

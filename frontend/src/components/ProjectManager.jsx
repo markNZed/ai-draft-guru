@@ -4,12 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectGroup, SelectValue } from "@/components/ui/select";
+
 import { toast } from "sonner";
 
-const ProjectManager = ({ onProjectSelect, currentProjectId }) => {
+const ProjectManager = ({ onProjectSelect, currentProjectName }) => {
   const [projects, setProjects] = useState([]);
   const [newProjectName, setNewProjectName] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // State to control dialog visibility
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchProjects = async () => {
     try {
@@ -44,6 +49,8 @@ const ProjectManager = ({ onProjectSelect, currentProjectId }) => {
       setProjects([...projects, data]);
       setNewProjectName('');
       toast.success('Project created successfully.');
+      setIsDialogOpen(false); // Close the dialog
+      onProjectSelect(data); // Select the newly created project
     } catch (error) {
       console.error(error);
       toast.error('Failed to create project.');
@@ -52,10 +59,10 @@ const ProjectManager = ({ onProjectSelect, currentProjectId }) => {
     }
   };
 
-  const deleteProject = async (projectId) => {
+  const deleteProject = async (projectName) => {
     if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) return;
     try {
-      // Implement DELETE /api/project/:projectId if needed
+      // Implement DELETE /api/project/:projectName if needed
       // For now, assuming deletion is handled differently
       toast.info('Project deletion not implemented.');
     } catch (error) {
@@ -67,19 +74,24 @@ const ProjectManager = ({ onProjectSelect, currentProjectId }) => {
   return (
     <div className="mb-4">
       <h2 className="text-lg font-semibold">Projects</h2>
-      <ul className="list-disc pl-5">
-        {projects.map(project => (
-          <li key={project.projectId} className={`flex justify-between items-center ${currentProjectId === project.projectId ? 'font-bold' : ''}`}>
-            <button onClick={() => onProjectSelect(project)} className="text-blue-500 hover:underline">
-              {project.name}
-            </button>
-            {/* <Button variant="destructive" size="sm" onClick={() => deleteProject(project.projectId)}>
-              Delete
-            </Button> */}
-          </li>
-        ))}
-      </ul>
-      <Dialog>
+        <Select onValueChange={(value) => onProjectSelect(projects.find(project => project.name === value))}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a project">
+              {currentProjectName || "Select a project"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {projects.map((project) => (
+                <SelectItem key={project.name} value={project.name}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>     
+      
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
           <Button className="mt-4">Create New Project</Button>
         </DialogTrigger>

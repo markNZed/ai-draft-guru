@@ -1,15 +1,15 @@
 // frontend/src/pages/Index.jsx
 
-import React, { useState, useRef, useEffect } from 'react';
-import { initializeEasyMDE, destroyEasyMDE, getEasyMDEInstance } from './easyMDEManager'; // Adjust the path accordingly
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { initializeEasyMDE, destroyEasyMDE, getEasyMDEInstance } from './easyMDEManager'; 
 import 'easymde/dist/easymde.min.css';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"; // Ensure these are imported correctly
-import { Diff, Hunk, parseDiff } from 'react-diff-view'; // Ensure react-diff-view is installed
-import 'react-diff-view/style/index.css'; // Import react-diff-view styles
-import { diffLines, formatLines } from 'unidiff'; // Import unidiff
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Diff, Hunk, parseDiff } from 'react-diff-view';
+import 'react-diff-view/style/index.css'; 
+import { diffLines, formatLines } from 'unidiff'; 
 import { remark } from 'remark';
 import remarkStringify from 'remark-stringify';
 import CodeMirror from '@uiw/react-codemirror';
@@ -17,8 +17,10 @@ import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { javascript } from '@codemirror/lang-javascript';
 import ProjectManager from '@/components/ProjectManager';
 import FileManager from '@/components/FileManager';
-import { applyCommandToAllFiles } from '@/lib/api'; // Import the new API functions
+import { applyCommandToAllFiles, applyCommandToFile } from '@/lib/api';
+import debounce from 'lodash.debounce'; 
 
+const AUTOSAVE = false;
 
 // Define the fetchMarkdownTemplate function
 const fetchMarkdownTemplate = async (templateName = 'default') => { // Accept a templateName parameter with 'default' as fallback
@@ -100,13 +102,53 @@ const Index = () => {
   // New States for Projects and Files
   const [currentProject, setCurrentProject] = useState(null);
   const [currentFile, setCurrentFile] = useState(null);
-  const [openFiles, setOpenFiles] = useState([]); // Array of { fileId, name, content }
-
-  // New state to track if applying command to all files
-  const [applyToAllFiles, setApplyToAllFiles] = useState(false);
+  const [openFiles, setOpenFiles] = useState([]); // Array of { fileName, name, content }
+  const fileManagerRef = useRef(null);
+  // Autosave states
+  const [isSaved, setIsSaved] = useState(false);
 
   // Add this inside your component
   const [isHelpExpanded, setIsHelpExpanded] = useState(true);
+
+  // Define the autosave function
+  const autosaveContent = useCallback(async () => {
+    if (!currentProject || !currentFile) {
+      // No project or file selected, skip autosave
+      return;
+    }
+
+    const content = markdownContentRef.current;
+    const fileName = currentFile.name;
+
+    if (!fileManagerRef.current || !fileManagerRef.current.saveFile) {
+      console.error('saveFile function is not available in FileManager.');
+      return;
+    }
+
+    const success = await fileManagerRef.current.saveFile(fileName, content);
+    if (success) {
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000); // Reset after 2 seconds
+    }
+  }, [currentProject, currentFile]);
+
+  // Debounced autosave to prevent excessive requests
+  const debouncedAutosave = useCallback(
+    debounce(() => {
+      autosaveContent();
+    }, 2000), // 2-second debounce
+    [autosaveContent]
+  );
+
+  // Periodic autosave (optional)
+  useEffect(() => {
+    if (AUTOSAVE) {
+      const interval = setInterval(() => {
+        autosaveContent();
+      }, 30000); // Every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [autosaveContent]);
 
   // Toggle function
   const toggleExpand = () => {
@@ -172,7 +214,7 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const response = await applyCommandToAllFiles(commandToSend, currentType, currentProject.projectId);
+      const response = await applyCommandToAllFiles(commandToSend, currentType, currentProject.name);
 
       if (response.results) {
         // Handle the results for each file
@@ -181,7 +223,7 @@ const Index = () => {
 
         // Update each successfully modified file in openFiles
         successes.forEach(result => {
-          updateFileContent(result.fileId, result.data.modifiedContent);
+          updateFileContent(result.name, result.data.modifiedContent);
         });
 
         // Notify the user
@@ -192,8 +234,6 @@ const Index = () => {
           toast.error(`${failures.length} file(s) failed to update.`);
         }
 
-        // Optionally, refresh the file list
-        fetchFilesForProject(currentProject.projectId);
       } else {
         throw new Error('Invalid response from backend.');
       }
@@ -333,10 +373,12 @@ const Index = () => {
   // Initialize EasyMDE on component mount
   useEffect(() => {
     const initializeEditor = async () => {
-      const templateContent = await fetchMarkdownTemplate();
-      if (templateContent === null) {
-        return; // Do not initialize editor if fetching failed
-      }
+      //const templateContent = await fetchMarkdownTemplate();
+      //if (templateContent === null) {
+      //  return; // Do not initialize editor if fetching failed
+      //}
+      const templateContent = "";
+
 
       // Load versions from localStorage
       loadVersions();
@@ -375,6 +417,11 @@ const Index = () => {
 
           markdownContentRef.current = newValue;
           setCurrentContent(newValue);
+
+          addNewVersion(newValue, 'Manual edit');
+
+          // Trigger debounced autosave
+          debouncedAutosave();
         });
         easyMDE.isChangeHandlerSet = true; // Custom flag to prevent multiple handlers
       }
@@ -406,12 +453,12 @@ const Index = () => {
 
   const sendCommand = async (command, content) => {
     try {
-      const response = await applyCommand(
+      const response = await applyCommandToFile(
         commandToSend,
-        currentContent,
         'free-form',
-        currentProject.projectId,
-        currentFile.fileId
+        currentProject.name,
+        currentFile.name,
+        currentContent,
       );
       
       if (response.isJSON && response.modifiedContent) {
@@ -434,67 +481,108 @@ const Index = () => {
     setCommandHistory([]);
     setUndoStack([]);
     setVersions([]);
-    fetchFilesForProject(project.projectId);
+  };
+
+  // This function is called whenever a file is deleted
+  const handleFileDeleted = (fileName) => {
+    setOpenFiles((prevOpenFiles) => {
+      const updatedOpenFiles = prevOpenFiles.filter(file => file.name !== fileName);
+
+      // Update the current file if it's the one that was deleted
+      if (currentFile?.name === fileName) {
+        // If there are still files open, switch to the first one, otherwise set currentFile to null
+        setCurrentFile(updatedOpenFiles.length > 0 ? updatedOpenFiles[0] : null);
+      }
+
+      return updatedOpenFiles;
+    });
+
+    // If the deleted file was the current file, reset the editor content
+    if (currentFile?.name === fileName) {
+      markdownContentRef.current = '';
+    }
   };
 
   // Function to handle file selection
-  const handleFileSelect = async (file) => {
-    // Check if file is already open
-    const isOpen = openFiles.find(f => f.fileId === file.fileId);
-    if (isOpen) {
-      setCurrentFile(isOpen);
+  const handleFileSelect = (file) => {
+    if (file === null) {
+      setCurrentFile(null);
+      setCurrentContent('');
+      markdownContentRef.current = '';
+      const easyMDE = getEasyMDEInstance();
+      if (easyMDE) {
+        easyMDE.value('');
+      }
       return;
     }
-
-    try {
-      const response = await fetch(`/api/project/${currentProject.projectId}/files/${file.fileId}`);
-      if (!response.ok) throw new Error('Failed to fetch file content.');
-      const data = await response.json();
-      const newFile = { ...file, content: data.content };
-      setOpenFiles([...openFiles, newFile]);
-      setCurrentFile(newFile);
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to load file content.');
+  
+    // Check if file is already open
+    const isOpen = openFiles.find(f => f.name === file.name);
+    if (isOpen) {
+      setCurrentFile(isOpen);
+      setCurrentContent(isOpen.content);
+      markdownContentRef.current = isOpen.content;
+      const easyMDE = getEasyMDEInstance();
+      if (easyMDE) {
+        easyMDE.value(isOpen.content);
+      }
+      return;
+    }
+  
+    // Add the file to openFiles
+    setOpenFiles(prevOpenFiles => [...prevOpenFiles, file]);
+    setCurrentFile(file);
+    setCurrentContent(file.content);
+    markdownContentRef.current = file.content;
+  
+    // Initialize or update the editor with the file's content
+    const easyMDE = getEasyMDEInstance();
+    if (easyMDE) {
+      easyMDE.value(file.content);
     }
   };
-
-  // Function to fetch files for the current project
-  const fetchFilesForProject = async (projectId) => {
-    try {
-      const response = await fetch(`/api/project/${projectId}/files`);
-      if (!response.ok) throw new Error('Failed to fetch files.');
-      const data = await response.json();
-      setOpenFiles([]);
-      setCurrentFile(null);
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to load files.');
-    }
-  };
+  
 
   // Function to close a file tab
-  const closeFile = (fileId) => {
-    setOpenFiles(openFiles.filter(file => file.fileId !== fileId));
-    if (currentFile && currentFile.fileId === fileId) {
+  const closeFile = (fileName) => {
+    setOpenFiles(openFiles.filter(file => file.name !== fileName));
+    if (currentFile && currentFile.name === fileName) {
       setCurrentFile(null);
     }
   };
 
   // Function to update file content after approval
-  const updateFileContent = (fileId, newContent) => {
-    setOpenFiles((prevFiles) =>
-      prevFiles.map((file) =>
-        file.fileId === fileId ? { ...file, content: newContent } : file
-      )
-    );
+  const updateFileContent = (fileName, newContent) => {
+    setOpenFiles(prevOpenFiles => prevOpenFiles.map(file => {
+      if (file.name === fileName) {
+        return { ...file, content: newContent };
+      }
+      return file;
+    }));
   
-    if (currentFile && currentFile.fileId === fileId) {
-      setCurrentFile((prevFile) => ({ ...prevFile, content: newContent }));
+    if (currentFile && currentFile.name === fileName) {
+      setCurrentFile(prevFile => ({ ...prevFile, content: newContent }));
+      setCurrentContent(newContent);
+      markdownContentRef.current = newContent;
+      const easyMDE = getEasyMDEInstance();
+      if (easyMDE) {
+        easyMDE.value(newContent);
+      }
     }
-  };
+  };  
+
+  useEffect(() => {
+    const easyMDE = getEasyMDEInstance();
+    if (easyMDE) {
+      if (currentFile) {
+        easyMDE.value(currentFile.content);
+      } else {
+        easyMDE.value('');
+      }
+    }
+  }, [currentFile]);
   
-  const applyChanges = async () => {
+  const runCommand = async () => {
     if (!currentProject) {
       toast.error('Please select a project.');
       return;
@@ -553,12 +641,12 @@ const Index = () => {
 
     if (activeCommandType === 'script-gen') {
       try {
-        const response = await applyCommand(
+        const response = await applyCommandToFile(
           commandToSend,
-          currentContent,
           activeCommandType,
-          currentProject.projectId,
-          currentFile.fileId
+          currentProject.name,
+          currentFile.name,
+          currentContent,
         );
         if (response.isJSON && response.modifiedContent) {
           setScriptCommand(response.modifiedContent);
@@ -572,7 +660,7 @@ const Index = () => {
         setIsLoading(false);
         return; 
       } catch (error) {
-        console.error('Error in applyChanges:', error);
+        console.error('Error in runCommand:', error);
         toast.error(`Error applying changes: ${error.message}`);
         setIsLoading(false);
       }
@@ -649,74 +737,77 @@ const Index = () => {
       return;
     }
     
-    try {
-      const response = await applyCommand(
-        commandToSend,
-        currentContent,
-        currentType,
-        currentProject.projectId,
-        currentFile.fileId
-      );
- 
-      if (response.isJSON) {
-        // Handle modified content if present
-        if (response.modifiedContent) {
-          setProposedContent(response.modifiedContent);
-          setCommandHistory(prevHistory => [...prevHistory, { command: commandToSend, type: currentType }]);
-          // Add a new version with the associated command
-          addNewVersion(response.modifiedContent, commandToSend);
-        }
-        return;
-      }
-
-      // Handle MP3 file if present
-      const contentType = response.headers.get('Content-Type');
-      if (contentType.includes('audio/mpeg')) {
-        // Extract filename from headers if available
-        const disposition = response.headers.get('Content-Disposition');
-        let filename = 'document.mp3';
-        if (disposition && disposition.includes('filename=')) {
-          filename = disposition.split('filename=')[1].replace(/"/g, '');
+    if (activeCommandType === 'predefined' || activeCommandType === 'free-form') {
+      try {
+        const response = await applyCommandToFile(
+          commandToSend,
+          currentType,
+          currentProject.name,
+          currentFile.name,
+          currentContent,
+        );
+  
+        if (response.isJSON) {
+          // Handle modified content if present
+          if (response.modifiedContent) {
+            setProposedContent(response.modifiedContent);
+            setCommandHistory(prevHistory => [...prevHistory, { command: commandToSend, type: currentType }]);
+            // Add a new version with the associated command
+            addNewVersion(response.modifiedContent, commandToSend);
+          }
+          return;
         }
 
-        const blob = response.data; 
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url); // Clean up
-        toast.success('MP3 audio has been generated and downloaded.');
-      }
+        // Handle MP3 file if present
+        const contentType = response.headers.get('Content-Type');
+        if (contentType.includes('audio/mpeg')) {
+          // Extract filename from headers if available
+          const disposition = response.headers.get('Content-Disposition');
+          let filename = 'document.mp3';
+          if (disposition && disposition.includes('filename=')) {
+            filename = disposition.split('filename=')[1].replace(/"/g, '');
+          }
 
-      // Handle DOCX file if present
-      if (response.docxBase64) {
-        const byteCharacters = atob(response.docxBase64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+          const blob = response.data; 
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url); // Clean up
+          toast.success('MP3 audio has been generated and downloaded.');
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = response.fileName || 'document.docx';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success('Markdown document has been converted to .docx and downloaded.');
-      }
 
-    } catch (error) {
-      console.error('Error applying changes:', error);
-      toast.error(`Error applying changes: ${error.message}`);
-    } finally {
-      setIsLoading(false);
+        // Handle DOCX file if present
+        if (response.docxBase64) {
+          const byteCharacters = atob(response.docxBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], {
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = response.name || 'document.docx';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          toast.success('Markdown document has been converted to .docx and downloaded.');
+        }
+
+      } catch (error) {
+        console.error('Error applying changes:', error);
+        toast.error(`Error applying changes: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
     }
+
   };
 
   const approveChanges = () => {
@@ -737,7 +828,7 @@ const Index = () => {
 
       if (proposedContent && currentFile) {
         // Update the file's content in openFiles
-        updateFileContent(currentFile.fileId, proposedContent);
+        updateFileContent(currentFile.name, proposedContent);
         setProposedContent(null);
         toast.success('Changes approved and applied!');
       }
@@ -796,7 +887,7 @@ const Index = () => {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      applyChanges();
+      runCommand();
     }
   };
 
@@ -961,42 +1052,43 @@ const Index = () => {
     },
   };
   
-
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">AI-Assisted Markdown Document Editor</h1>
 
-      {/* Project Manager */}
+      {/* Project Manager with dialog visibility controlled by parent */}
       <ProjectManager 
         onProjectSelect={handleProjectSelect} 
-        currentProjectId={currentProject ? currentProject.projectId : null} 
+        currentProjectName={currentProject ? currentProject.name : null} 
       />
 
       {/* File Manager */}
       {currentProject && (
         <FileManager 
-          projectId={currentProject.projectId} 
+          ref={fileManagerRef}
+          projectName={currentProject.name} 
           onFileSelect={handleFileSelect} 
-          currentFileId={currentFile ? currentFile.fileId : null}
+          onFilesChanged={handleFileDeleted}
+          filename={currentFile ? currentFile.name : null}
         />
       )}
 
       {/* Tabs for Open Files */}
       {openFiles.length > 0 && (
-        <Tabs value={currentFile ? currentFile.fileId : null} onValueChange={(value) => {
-          const selectedFile = openFiles.find(file => file.fileId === value);
+        <Tabs value={currentFile ? currentFile.name : null} onValueChange={(value) => {
+          const selectedFile = openFiles.find(file => file.name === value);
           if (selectedFile) setCurrentFile(selectedFile);
         }}>
           <TabsList className="mb-4 flex flex-wrap">
             {openFiles.map(file => (
-              <div key={file.fileId} className="flex items-center">
-                <TabsTrigger value={file.fileId} className="flex items-center">
+              <div key={file.name} className="flex items-center">
+                <TabsTrigger value={file.name} className="flex items-center">
                   {file.name}
                 </TabsTrigger>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={() => closeFile(file.fileId)} 
+                  onClick={() => closeFile(file.name)} 
                   className="ml-1"
                 >
                   ×
@@ -1143,11 +1235,11 @@ const Index = () => {
 
                 {/* Apply Command Buttons */}
                 <div className="mt-4 space-y-2">
-                  <Button onClick={applyChanges} disabled={isLoading} className="w-full">
-                    {isLoading ? 'Applying...' : 'Run Command on Selected File'}
+                  <Button onClick={runCommand} disabled={isLoading} className="w-full">
+                    {isLoading ? 'Applying...' : 'Run on Active File'}
                   </Button>
                   <Button onClick={applyCommandToAll} disabled={isLoading || !currentProject} className="w-full">
-                    {isLoading ? 'Applying...' : 'Run Command on All Files'}
+                    {isLoading ? 'Applying...' : 'Run on All Files'}
                   </Button>
                 </div>
 
@@ -1177,7 +1269,24 @@ const Index = () => {
           </div>
         ) : currentFile && proposedContent ? (
           // Diff and Approval Section
-          {/* ... [Existing Diff and Approval UI] */}
+          <div className="proposed-changes-container">
+            <h2 className="text-xl font-semibold mb-4">Review Proposed Changes</h2>
+            <div className="proposed-changes mb-6">
+              {renderDiff(currentContent, proposedContent)}
+            </div>
+            <div className="flex gap-4">
+              <Button onClick={approveChanges} color="green" className="flex-1">
+                Approve
+              </Button>
+              <Button onClick={rejectChanges} color="red" className="flex-1">
+                Reject
+              </Button>
+            </div>
+            {/* Optional: Add a button to go back to editing without approving/rejecting */}
+            <Button onClick={() => setProposedContent(null)} className="mt-4 w-full">
+              Go Back to Editor
+            </Button>
+          </div>
         ): (
           <div>Please select a project and a file to begin editing.</div>
         )}
